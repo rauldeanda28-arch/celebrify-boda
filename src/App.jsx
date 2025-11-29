@@ -674,7 +674,7 @@ export default function App() {
       await setDoc(postRef, { ...post, comments: [...(post.comments || []), newComment] }, { merge: true });
     } catch (e) { console.error(e); }
   };
-
+// Cambio para Vercel
   const handleToggleLike = async (postId, isLiked) => {
      if (!firebaseUser || !currentUser) return;
      try {
