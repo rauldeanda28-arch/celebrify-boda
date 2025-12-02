@@ -190,7 +190,7 @@ const LoginScreen = ({ onJoin }) => {
     <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-900 via-blue-950 to-black text-white p-6">
       <div className="mb-6 flex flex-col items-center animate-bounce-slow">
         <Aperture size={50} className="mb-2 text-yellow-400" />
-        <h1 className="text-3xl font-bold tracking-tighter">Celebrify</h1>
+        <h1 className="text-3xl font-bold tracking-tighter">Clebrify</h1>
       </div>
 
       <div className="w-full max-w-sm bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl overflow-hidden">
@@ -713,7 +713,7 @@ export default function App() {
     } catch (e) {}
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-gray-900 text-blue-400">Iniciando Celebrify...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center bg-gray-900 text-blue-400">Iniciando Clebrify...</div>;
   if (!currentUser) return <LoginScreen onJoin={handleLogin} />;
 
   return (
