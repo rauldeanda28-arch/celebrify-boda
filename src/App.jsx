@@ -725,7 +725,7 @@ export default function App() {
           <header className="bg-white/95 backdrop-blur-sm border-b border-blue-100 px-4 py-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
             <div>
               <h1 className="text-xl font-bold font-serif tracking-tight flex items-center text-blue-900">
-                Celebrify <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 font-sans font-bold">{currentUser.eventCode}</span>
+                C-lebrify <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 font-sans font-bold">{currentUser.eventCode}</span>
               </h1>
               {currentUser.eventName && <p className="text-xs text-gray-500 truncate max-w-[200px]">{currentUser.eventName}</p>}
             </div>
