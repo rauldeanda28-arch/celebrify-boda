@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const STORAGE_KEY = 'celebrify_session_v1';
-
+const MASTER_KEY = 'BODA2024';
 // --- UTILIDADES ---
 const generateCode = (length) => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -49,9 +49,20 @@ const LoginScreen = ({ onJoin }) => {
   const [createHostName, setCreateHostName] = useState('');
   const [createdEventData, setCreatedEventData] = useState(null);
 
+  // 🔐 Estados para Clave Maestra
+  const [masterKeyInput, setMasterKeyInput] = useState('');
+  const [showMasterKeyError, setShowMasterKeyError] = useState(false);
+
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!createEventName || !createHostName) return;
+
+    // 🔐 VALIDACIÓN DE CLAVE MAESTRA
+    if (masterKeyInput !== MASTER_KEY) {
+      setShowMasterKeyError(true);
+      setError('❌ Clave maestra incorrecta. Contacta al administrador del sistema.');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -294,6 +305,30 @@ const LoginScreen = ({ onJoin }) => {
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-blue-400/50 focus:outline-none focus:border-yellow-400/50 transition"
                   placeholder="Ej. Luis"
                 />
+              </div>
+
+              {/* 🔐 CAMPO DE CLAVE MAESTRA */}
+              <div>
+                <label className="text-xs font-bold uppercase text-yellow-200 ml-1 flex items-center gap-1">
+                  <Lock size={12} /> Clave Maestra
+                </label>
+                <input
+                  type="password"
+                  value={masterKeyInput}
+                  onChange={(e) => {
+                    setMasterKeyInput(e.target.value);
+                    setShowMasterKeyError(false);
+                    setError('');
+                  }}
+                  className={`w-full bg-yellow-400/10 border ${showMasterKeyError ? 'border-red-500' : 'border-yellow-400/30'} rounded-xl px-4 py-3 text-yellow-300 placeholder-yellow-600/50 focus:outline-none focus:border-yellow-400 transition font-mono tracking-widest`}
+                  placeholder="••••••••"
+                  maxLength={20}
+                  autoComplete="off"
+                />
+                <p className="text-[10px] text-yellow-200/70 mt-1 ml-1 flex items-center gap-1">
+                  <Lock size={8} />
+                  Solo quien tenga la clave puede crear eventos
+                </p>
               </div>
 
               <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20">
