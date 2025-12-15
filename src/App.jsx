@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, Users } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, Users, Download, Loader } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -22,7 +24,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v11'; // Versión actualizada
+const STORAGE_KEY = 'celebrify_session_v12'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -76,7 +78,6 @@ const LoginScreen = ({ onJoin, userUid }) => {
         code: newEventCode
       });
 
-      // Registramos al host como usuario
       const hostId = normalizeName(createHostName);
       await setDoc(doc(db, 'events', newEventCode, 'users', hostId), {
           originalName: createHostName,
@@ -409,13 +410,46 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. Perfil
-const ProfileView = ({ user, onLogout }) => {
+// 4. Perfil con DESCARGA MASIVA
+const ProfileView = ({ user, onLogout, posts }) => {
   const [showPin, setShowPin] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const copyCode = () => {
     navigator.clipboard.writeText(user.eventCode);
     alert("¡Código copiado!");
+  };
+
+  const handleDownloadAll = async () => {
+    if (posts.length === 0) {
+        alert("No hay fotos para descargar.");
+        return;
+    }
+    setIsDownloading(true);
+    try {
+        const zip = new JSZip();
+        const folder = zip.folder(`celebrify_${user.eventCode}`);
+
+        posts.forEach((post, index) => {
+            if (!post.imageUrl) return;
+            // Detectar tipo
+            const isVideo = post.imageUrl.startsWith('data:video');
+            const ext = isVideo ? 'mp4' : 'jpg';
+            const base64Data = post.imageUrl.split(',')[1];
+            
+            if (base64Data) {
+                folder.file(`momento_${index + 1}_${post.userName}.${ext}`, base64Data, {base64: true});
+            }
+        });
+
+        const content = await zip.generateAsync({type: "blob"});
+        saveAs(content, `celebrify_${user.eventCode}_album.zip`);
+    } catch (e) {
+        console.error(e);
+        alert("Error al comprimir el archivo.");
+    } finally {
+        setIsDownloading(false);
+    }
   };
 
   return (
@@ -442,22 +476,43 @@ const ProfileView = ({ user, onLogout }) => {
          </div>
        </div>
 
-       {user.role === 'host' && user.adminPin && (
-          <div className="bg-yellow-50 rounded-2xl p-6 shadow-sm border border-yellow-100 mb-6">
-             <div className="flex items-center gap-2 mb-2">
-                <Lock size={18} className="text-yellow-600"/>
-                <p className="text-xs font-bold text-yellow-600 uppercase">PIN de Administrador</p>
-             </div>
-             <p className="text-yellow-800 text-sm mb-3">Esta es la clave para moderar este evento:</p>
-             <div className="bg-white p-4 rounded-xl flex justify-between items-center border border-yellow-200">
-                <span className="text-xl font-mono font-bold text-gray-800 tracking-widest">
-                   {showPin ? user.adminPin : '••••'}
-                </span>
-                <button onClick={() => setShowPin(!showPin)} className="text-gray-400 hover:text-blue-600">
-                   {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-             </div>
-          </div>
+       {user.role === 'host' && (
+         <>
+             {/* BOTÓN DE DESCARGA */}
+             <button 
+                onClick={handleDownloadAll} 
+                disabled={isDownloading}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 mb-6 shadow-lg active:scale-95 transition disabled:opacity-70"
+             >
+                {isDownloading ? (
+                    <>
+                        <Loader size={20} className="animate-spin" /> Comprimiendo álbum...
+                    </>
+                ) : (
+                    <>
+                        <Download size={20} /> Descargar Álbum Completo (.zip)
+                    </>
+                )}
+             </button>
+
+             {user.adminPin && (
+                <div className="bg-yellow-50 rounded-2xl p-6 shadow-sm border border-yellow-100 mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Lock size={18} className="text-yellow-600"/>
+                        <p className="text-xs font-bold text-yellow-600 uppercase">PIN de Administrador</p>
+                    </div>
+                    <p className="text-yellow-800 text-sm mb-3">Esta es la clave para moderar este evento:</p>
+                    <div className="bg-white p-4 rounded-xl flex justify-between items-center border border-yellow-200">
+                        <span className="text-xl font-mono font-bold text-gray-800 tracking-widest">
+                        {showPin ? user.adminPin : '••••'}
+                        </span>
+                        <button onClick={() => setShowPin(!showPin)} className="text-gray-400 hover:text-blue-600">
+                        {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                    </div>
+                </div>
+             )}
+         </>
        )}
 
        <div className="mt-4">
@@ -479,7 +534,7 @@ export default function App() {
 
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [peopleCount, setPeopleCount] = useState(0); // Nuevo estado para contador
+  const [peopleCount, setPeopleCount] = useState(0); 
   const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
 
@@ -492,11 +547,10 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Escuchar POSTS y USUARIOS
   useEffect(() => {
     if (!firebaseUser || !currentUser) return;
     
-    // 1. Escuchar Post
+    // Escuchar Post
     const postsRef = collection(db, 'events', currentUser.eventCode, 'posts');
     const qPosts = query(postsRef);
     const unsubPosts = onSnapshot(qPosts, (snapshot) => {
@@ -505,10 +559,10 @@ export default function App() {
       setPosts(data);
     });
 
-    // 2. Escuchar Usuarios (CONTADOR)
+    // Escuchar Usuarios
     const usersRef = collection(db, 'events', currentUser.eventCode, 'users');
     const unsubUsers = onSnapshot(usersRef, (snapshot) => {
-       setPeopleCount(snapshot.size); // Actualiza el número de personas
+       setPeopleCount(snapshot.size); 
     });
 
     return () => {
@@ -606,7 +660,8 @@ export default function App() {
              <button onClick={() => setView('feed')} className="mr-3"><X size={24} className="text-gray-400"/></button>
              <h1 className="text-lg font-bold text-gray-800">Mi Perfil</h1>
            </header>
-           <ProfileView user={currentUser} onLogout={handleLogout} />
+           {/* Pasamos 'posts' al perfil para que pueda descargarlos */}
+           <ProfileView user={currentUser} onLogout={handleLogout} posts={posts} />
            <nav className="absolute bottom-0 w-full bg-white border-t h-16 flex justify-around items-center z-20 pb-safe">
             <button onClick={() => setView('feed')} className={`p-2 ${view === 'feed' ? 'text-blue-600' : 'text-gray-300'}`}>
               <Home size={28} />
@@ -629,12 +684,10 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-3">
-               {/* CONTADOR DE PERSONAS */}
                <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
                   <Users size={12} className="text-gray-500"/>
                   <span className="text-xs font-bold text-gray-600">{peopleCount}</span>
                </div>
-
                {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold border border-yellow-200">ADMIN</span>}
             </div>
           </header>
