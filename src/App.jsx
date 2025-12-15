@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -15,13 +15,13 @@ const firebaseConfig = {
 };
 
 // --- PIN MAESTRO PARA CREAR EVENTOS ---
-const MASTER_PIN = "123456"; // <--- ¡AQUÍ PUEDES CAMBIAR TU CONTRASEÑA MAESTRA!
+const MASTER_PIN = "123456"; 
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v3'; // Cambiamos versión por si acaso
+const STORAGE_KEY = 'celebrify_session_v4'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -40,37 +40,28 @@ const LoginScreen = ({ onJoin }) => {
   const [mode, setMode] = useState('join');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Estados para Unirse
   const [joinName, setJoinName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [adminPinInput, setAdminPinInput] = useState('');
-
-  // Estados para Crear
   const [createEventName, setCreateEventName] = useState('');
   const [createHostName, setCreateHostName] = useState('');
-  const [masterPinInput, setMasterPinInput] = useState(''); // Nuevo estado para el PIN Maestro
+  const [masterPinInput, setMasterPinInput] = useState('');
   const [createdEventData, setCreatedEventData] = useState(null);
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!createEventName || !createHostName || !masterPinInput) return;
-    
-    // --- VERIFICACIÓN DEL PIN MAESTRO ---
     if (masterPinInput !== MASTER_PIN) {
-        setError('⛔ PIN Maestro incorrecto. No tienes permiso para crear eventos.');
+        setError('⛔ PIN Maestro incorrecto.');
         return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       const newEventCode = generateCode(6);
       const newAdminPin = Math.floor(1000 + Math.random() * 9000).toString();
       const eventRef = doc(db, 'events', newEventCode);
-      
       await setDoc(eventRef, {
         eventName: createEventName,
         hostName: createHostName,
@@ -78,11 +69,9 @@ const LoginScreen = ({ onJoin }) => {
         createdAt: serverTimestamp(),
         code: newEventCode
       });
-
       setCreatedEventData({ code: newEventCode, pin: newAdminPin, name: createEventName });
       setMode('success_create');
     } catch (err) {
-      console.error(err);
       setError('Error al crear. Verifica tu conexión.');
     } finally {
       setLoading(false);
@@ -95,18 +84,15 @@ const LoginScreen = ({ onJoin }) => {
     if (isAdminLogin && !adminPinInput) return;
     setLoading(true);
     setError('');
-
     try {
       const code = joinCode.toUpperCase().trim();
       const docRef = doc(db, 'events', code);
       const docSnap = await getDoc(docRef);
-
       if (!docSnap.exists()) {
         setError('¡Código incorrecto!');
         setLoading(false);
         return;
       }
-
       const eventData = docSnap.data();
       let role = 'guest';
       if (isAdminLogin) {
@@ -118,14 +104,7 @@ const LoginScreen = ({ onJoin }) => {
           return;
         }
       }
-
-      onJoin({ 
-        name: joinName, 
-        role, 
-        eventCode: code, 
-        eventName: eventData.eventName 
-      });
-
+      onJoin({ name: joinName, role, eventCode: code, eventName: eventData.eventName });
     } catch (err) {
       setError('Error de conexión.');
     } finally {
@@ -172,30 +151,24 @@ const LoginScreen = ({ onJoin }) => {
         <Aperture size={60} className="mx-auto mb-2 text-yellow-400" />
         <h1 className="text-4xl font-bold tracking-tighter">Clebrify</h1>
       </div>
-
       <div className="w-full max-w-sm bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden">
         <div className="flex border-b border-white/10">
           <button onClick={() => setMode('join')} className={`flex-1 py-4 font-bold ${mode === 'join' ? 'bg-white/10 text-yellow-400' : 'text-gray-400'}`}>Unirse</button>
           <button onClick={() => setMode('create')} className={`flex-1 py-4 font-bold ${mode === 'create' ? 'bg-white/10 text-yellow-400' : 'text-gray-400'}`}>Crear</button>
         </div>
-
         <div className="p-6">
           {error && <div className="mb-4 p-2 bg-red-500/20 text-red-200 text-xs rounded text-center">{error}</div>}
-
           {mode === 'join' ? (
             <form onSubmit={handleJoinEvent} className="space-y-4">
               <input type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white uppercase" placeholder="CÓDIGO (Ej. AB12)" maxLength={6} />
               <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
-              
               <div className="flex items-center gap-2">
                  <input type="checkbox" checked={isAdminLogin} onChange={() => setIsAdminLogin(!isAdminLogin)} className="w-4 h-4" />
                  <span className="text-sm text-gray-300">Soy el Anfitrión</span>
               </div>
-              
               {isAdminLogin && (
                 <input type="tel" value={adminPinInput} onChange={(e) => setAdminPinInput(e.target.value)} className="w-full bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3 text-yellow-200 placeholder-yellow-700" placeholder="PIN Admin" maxLength={4} />
               )}
-
               <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl mt-2">
                 {loading ? 'Entrando...' : '¡Vamos!'}
               </button>
@@ -204,19 +177,10 @@ const LoginScreen = ({ onJoin }) => {
             <form onSubmit={handleCreateEvent} className="space-y-4">
               <input type="text" value={createEventName} onChange={(e) => setCreateEventName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Nombre del Evento" />
               <input type="text" value={createHostName} onChange={(e) => setCreateHostName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
-              
-              {/* CAMPO DE PIN MAESTRO */}
               <div className="bg-red-500/10 p-3 rounded-xl border border-red-500/30">
                 <label className="text-[10px] uppercase font-bold text-red-300 mb-1 block flex items-center gap-1"><Lock size={10} /> Solo Personal Autorizado</label>
-                <input 
-                  type="password" 
-                  value={masterPinInput} 
-                  onChange={(e) => setMasterPinInput(e.target.value)} 
-                  className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" 
-                  placeholder="PIN Maestro" 
-                />
+                <input type="password" value={masterPinInput} onChange={(e) => setMasterPinInput(e.target.value)} className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" placeholder="PIN Maestro" />
               </div>
-
               <button disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl mt-2">
                  {loading ? 'Creando...' : 'Crear Evento'}
               </button>
@@ -228,114 +192,98 @@ const LoginScreen = ({ onJoin }) => {
   );
 };
 
-// 2. Componente de Cámara (OPTIMIZADO PARA FOTOS)
+// 2. Componente de Cámara (SIMPLIFICADO: SOLO BOTÓN)
 const CameraView = ({ onClose, onUpload }) => {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [stream, setStream] = useState(null);
-  const [cameraActive, setCameraActive] = useState(false);
+  const canvasRef = useRef(null);
 
-  useEffect(() => {
-    let activeStream = null;
-    if (!cameraActive) return;
+  const processAndUpload = (source, isVideo) => {
+    // Si es video, no podemos comprimirlo en canvas fácilmente en JS puro sin librerías pesadas
+    // Así que lo pasamos directo, PERO el tamaño ya fue verificado en handleFileSelect
+    if (isVideo) {
+        onUpload(source); // source aquí es el DataURL directo
+        return;
+    }
 
-    const startCamera = async () => {
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-        activeStream = mediaStream;
-        setStream(mediaStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-          videoRef.current.play();
-        }
-      } catch (err) {
-        console.warn("Cámara no disponible, usando fallback de archivo");
-      }
-    };
-    startCamera();
-    return () => {
-      if (activeStream) activeStream.getTracks().forEach(t => t.stop());
-    };
-  }, [cameraActive]);
-
-  const processAndUpload = (source, isVideo = true) => {
+    // Lógica de compresión para FOTOS
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const MAX_WIDTH = 600; 
-    let width = isVideo ? source.videoWidth : source.width;
-    let height = isVideo ? source.videoHeight : source.height;
+    const MAX_WIDTH = 800; 
+    let width = source.width;
+    let height = source.height;
 
     if (width > MAX_WIDTH) {
       height = height * (MAX_WIDTH / width);
       width = MAX_WIDTH;
     }
-
     canvas.width = width;
     canvas.height = height;
-    
     const ctx = canvas.getContext('2d');
     ctx.drawImage(source, 0, 0, width, height);
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.7);
     onUpload(imageDataUrl);
-  };
-
-  const takePhoto = () => {
-    if (videoRef.current) processAndUpload(videoRef.current, true);
   };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if(file.type.startsWith('video/')) {
-        alert("⚠️ Solo se permiten FOTOS en esta versión gratuita.");
-        return;
+      const isVideo = file.type.startsWith('video/');
+      
+      // REGLA DE ORO: Videos muy cortos solamente
+      if (isVideo && file.size > 2500000) { // Limite aprox 2.5MB
+          alert("⚠️ El video es muy pesado para la versión gratuita. Intenta uno más corto (3-5 segundos).");
+          return;
       }
+
       const reader = new FileReader();
       reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => processAndUpload(img, false);
-        img.src = event.target.result;
+        if (isVideo) {
+            processAndUpload(event.target.result, true);
+        } else {
+            const img = new Image();
+            img.onload = () => processAndUpload(img, false);
+            img.src = event.target.result;
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
-        {cameraActive && stream ? (
-          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-        ) : (
-          <div className="text-center p-8 text-white space-y-4 w-full max-w-sm">
-            <h3 className="text-xl font-bold">Modo Cámara</h3>
-            <button onClick={() => setCameraActive(true)} className="w-full bg-white/20 p-4 rounded-xl flex items-center justify-center gap-2 font-bold">
-               <Camera size={24} /> Cámara en Vivo
-            </button>
-            <button onClick={() => fileInputRef.current.click()} className="w-full bg-blue-600 p-4 rounded-xl flex items-center justify-center gap-2 font-bold">
-               <Video size={24} /> Subir de Galería
-            </button>
-            <p className="text-xs text-gray-500 mt-4">* Solo Fotos soportadas actualmente</p>
+    <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6">
+       <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full text-white"><X size={24} /></button>
+       
+       <div className="w-full max-w-sm text-center">
+          <div className="mb-8 flex justify-center">
+             <div className="w-24 h-24 bg-blue-900/50 rounded-full flex items-center justify-center border-2 border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+                <Camera size={48} className="text-white" />
+             </div>
           </div>
-        )}
-        <canvas ref={canvasRef} className="hidden" />
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white"><X size={24} /></button>
-      </div>
+          
+          <h2 className="text-white text-2xl font-bold mb-2">Nuevo Momento</h2>
+          <p className="text-gray-400 mb-8 text-sm">Comparte una foto o un video corto con todos.</p>
 
-      {cameraActive && (
-        <div className="h-32 bg-black flex items-center justify-center">
-          <button onClick={takePhoto} className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 transition active:scale-95"></button>
-        </div>
-      )}
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+          <button 
+            onClick={() => fileInputRef.current.click()} 
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 text-lg shadow-xl transition transform active:scale-95"
+          >
+             <Upload size={24} />
+             CÁMARA
+          </button>
+          
+          <p className="text-[10px] text-gray-500 mt-4 max-w-xs mx-auto">
+            * Al pulsar se abrirá tu galería o cámara nativa. Puedes elegir Fotos o Videos.
+          </p>
+       </div>
+
+       <canvas ref={canvasRef} className="hidden" />
+       {/* Input que acepta IMÁGENES Y VIDEOS */}
+       <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
     </div>
   );
 };
 
-// 3. Tarjeta de Foto (CON COMENTARIOS ARREGLADOS)
+// 3. Tarjeta de Foto (CON SOPORTE DE VIDEO)
 const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment, onDeleteComment, onToggleLike }) => {
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
@@ -350,6 +298,8 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
 
   const isLiked = post.likes && post.likes.includes(currentUserId);
   const commentsList = post.comments || []; 
+  // Detectar si es video revisando el comienzo del string base64
+  const isVideo = post.imageUrl && post.imageUrl.startsWith('data:video');
 
   return (
     <div className="bg-white mb-4 shadow-sm border-b border-gray-100 pb-2">
@@ -368,7 +318,11 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
       </div>
 
       <div className="w-full bg-gray-100">
-        <img src={post.imageUrl} alt="Momento" className="w-full h-auto object-cover" />
+        {isVideo ? (
+            <video controls className="w-full h-auto max-h-[500px]" src={post.imageUrl} />
+        ) : (
+            <img src={post.imageUrl} alt="Momento" className="w-full h-auto object-cover" />
+        )}
       </div>
 
       <div className="p-3">
@@ -464,25 +418,29 @@ export default function App() {
     }
   };
 
-  const handleUpload = async (imageDataUrl) => {
+  const handleUpload = async (fileDataUrl) => {
     if (!firebaseUser || !currentUser) return;
-    if (imageDataUrl.length > 2000000) {
-       alert("Imagen muy grande. Intenta tomarla de nuevo.");
+    
+    // Verificación de tamaño final antes de enviar a Firebase
+    // 1 char en base64 ~= 1 byte (aprox). 3MB limite estricto
+    if (fileDataUrl.length > 3500000) { 
+       alert("⚠️ El archivo es demasiado grande. Intenta una foto o un video más corto.");
        return;
     }
+
     setView('feed');
     try {
       await addDoc(collection(db, 'events', currentUser.eventCode, 'posts'), {
         userId: firebaseUser.uid,
         userName: currentUser.name,
         userRole: currentUser.role,
-        imageUrl: imageDataUrl,
+        imageUrl: fileDataUrl, // Aquí va la foto O el video en texto
         timestamp: serverTimestamp(),
         comments: [],
         likes: []
       });
     } catch (e) {
-      alert("Error subiendo foto.");
+      alert("Error subiendo. Puede que el archivo sea muy pesado.");
     }
   };
 
@@ -491,17 +449,9 @@ export default function App() {
     try {
       const postRef = doc(db, 'events', currentUser.eventCode, 'posts', postId);
       await updateDoc(postRef, {
-        comments: arrayUnion({
-          text,
-          userName: currentUser.name,
-          userId: firebaseUser.uid,
-          timestamp: Date.now()
-        })
+        comments: arrayUnion({ text, userName: currentUser.name, userId: firebaseUser.uid, timestamp: Date.now() })
       });
-    } catch (e) {
-      console.error(e);
-      alert("No se pudo enviar el comentario.");
-    }
+    } catch (e) { alert("Error al comentar."); }
   };
 
   const handleDeletePost = async (postId) => {
@@ -562,7 +512,7 @@ export default function App() {
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Camera size={30} />
                 </div>
-                <p>¡Aún no hay fotos! <br/> Sé el primero en compartir.</p>
+                <p>¡Aún no hay recuerdos! <br/> Sé el primero en compartir.</p>
               </div>
             ) : (
               posts.map(post => (
