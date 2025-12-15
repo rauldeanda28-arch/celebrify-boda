@@ -194,6 +194,41 @@ const PostCard = ({
 
 /* ================= APP ================= */
 
+function CameraView({ onClose }) {
+  const fileInputRef = useRef(null);
+
+  const openFilePicker = () => {
+    fileInputRef.current.click();
+  };
+
+  return (
+    <div className="h-screen bg-black text-white flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <button onClick={onClose}>Cerrar</button>
+        <span>Cámara</span>
+        <div />
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center gap-4">
+        <button
+          onClick={openFilePicker}
+          className="bg-white text-black px-6 py-4 rounded-xl"
+        >
+          Abrir cámara / galería
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          capture="environment"
+          className="hidden"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
