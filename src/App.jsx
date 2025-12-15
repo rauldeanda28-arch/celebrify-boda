@@ -15,14 +15,14 @@ const firebaseConfig = {
 };
 
 // --- SISTEMA DE SEGURIDAD ---
-const MASTER_PIN = "123456";  // <--- SOLO TUYO (Abre todo)
-const CREATOR_PIN = "777777"; // <--- PARA CLIENTES (Solo deja crear, no espiar)
+const MASTER_PIN = "123456";  // <--- TU LLAVE MAESTRA
+const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v9'; 
+const STORAGE_KEY = 'celebrify_session_v10'; // Nueva versión con seguridad de usuarios
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -34,10 +34,13 @@ const generateCode = (length) => {
   return result;
 };
 
+// Normaliza nombres para evitar duplicados (ej: "Raul " es igual a "raul")
+const normalizeName = (name) => name.trim().toLowerCase().replace(/\s+/g, '');
+
 // --- COMPONENTES ---
 
 // 1. Pantalla de Login / Bienvenida
-const LoginScreen = ({ onJoin }) => {
+const LoginScreen = ({ onJoin, userUid }) => {
   const [mode, setMode] = useState('join');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +57,6 @@ const LoginScreen = ({ onJoin }) => {
     e.preventDefault();
     if (!createEventName || !createHostName || !masterPinInput) return;
     
-    // SEGURIDAD: Aceptamos Master PIN (Tú) O Creator PIN (Clientes)
     if (masterPinInput !== MASTER_PIN && masterPinInput !== CREATOR_PIN) {
         setError('⛔ Código de autorización inválido.');
         return;
@@ -66,6 +68,8 @@ const LoginScreen = ({ onJoin }) => {
       const newEventCode = generateCode(6);
       const newAdminPin = Math.floor(1000 + Math.random() * 9000).toString();
       const eventRef = doc(db, 'events', newEventCode);
+      
+      // Creamos el evento
       await setDoc(eventRef, {
         eventName: createEventName,
         hostName: createHostName,
@@ -73,9 +77,20 @@ const LoginScreen = ({ onJoin }) => {
         createdAt: serverTimestamp(),
         code: newEventCode
       });
+
+      // ¡IMPORTANTE! Registramos al host como primer usuario protegido
+      const hostId = normalizeName(createHostName);
+      await setDoc(doc(db, 'events', newEventCode, 'users', hostId), {
+          originalName: createHostName,
+          deviceId: userUid, // Vinculamos al dispositivo
+          role: 'host',
+          joinedAt: serverTimestamp()
+      });
+
       setCreatedEventData({ code: newEventCode, pin: newAdminPin, name: createEventName });
       setMode('success_create');
     } catch (err) {
+      console.error(err);
       setError('Error al crear. Verifica tu conexión.');
     } finally {
       setLoading(false);
@@ -88,40 +103,66 @@ const LoginScreen = ({ onJoin }) => {
     if (isAdminLogin && !adminPinInput) return;
     setLoading(true);
     setError('');
+
     try {
       const code = joinCode.toUpperCase().trim();
-      const docRef = doc(db, 'events', code);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) {
-        setError('¡Código incorrecto!');
+      const eventRef = doc(db, 'events', code);
+      const eventSnap = await getDoc(eventRef);
+
+      if (!eventSnap.exists()) {
+        setError('¡Código de evento no existe!');
         setLoading(false);
         return;
       }
-      const eventData = docSnap.data();
+
+      const eventData = eventSnap.data();
       let role = 'guest';
-      
+
+      // 1. Verificación de Admin
       if (isAdminLogin) {
-        // SEGURIDAD CRÍTICA: 
-        // Solo entra si es el PIN del evento O el MASTER PIN.
-        // El CREATOR_PIN (777777) NO FUNCIONA AQUÍ.
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) {
           role = 'host';
         } else {
-          setError('PIN incorrecto. Acceso denegado.');
+          setError('PIN incorrecto.');
           setLoading(false);
           return;
         }
       }
-      
+
+      // 2. PROTECCIÓN DE IDENTIDAD (El sistema anti-impostores)
+      const cleanName = normalizeName(joinName);
+      const userRef = doc(db, 'events', code, 'users', cleanName);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+          const userData = userSnap.data();
+          // Si el nombre existe, verificamos si es la misma persona (mismo dispositivo)
+          if (userData.deviceId !== userUid) {
+              setError(`⚠️ El nombre "${joinName}" ya está en uso por otra persona. Por favor agrega tu apellido o usa otro.`);
+              setLoading(false);
+              return;
+          }
+          // Si es el mismo dispositivo, ¡Bienvenido de nuevo! (Recupera su sesión)
+      } else {
+          // Si no existe, lo registramos y lo protegemos
+          await setDoc(userRef, {
+              originalName: joinName,
+              deviceId: userUid,
+              role: role,
+              joinedAt: serverTimestamp()
+          });
+      }
+
       onJoin({ 
           name: joinName, 
           role, 
           eventCode: code, 
           eventName: eventData.eventName,
-          // Guardamos SIEMPRE el PIN real del evento, no el maestro
           adminPin: role === 'host' ? eventData.adminPin : null 
       });
+
     } catch (err) {
+      console.error(err);
       setError('Error de conexión.');
     } finally {
       setLoading(false);
@@ -149,13 +190,13 @@ const LoginScreen = ({ onJoin }) => {
             </div>
           </div>
           <div className="bg-red-900/30 rounded-xl p-4 mb-6 border border-red-900/50">
-            <p className="text-xs text-red-300 uppercase font-bold mb-1">PIN Admin (Específico)</p>
+            <p className="text-xs text-red-300 uppercase font-bold mb-1">PIN Admin</p>
             <div className="flex items-center justify-between">
               <span className="text-xl font-mono font-bold text-white">{createdEventData.pin}</span>
               <button onClick={() => copyToClipboard(createdEventData.pin)} className="p-2"><Copy size={16} /></button>
             </div>
             <p className="text-[10px] text-red-200 mt-2 text-left leading-tight">
-                * Guarda este PIN. Es la única llave para moderar ESTE evento específico.
+                * Guarda este PIN para administrar.
             </p>
           </div>
           <button onClick={() => onJoin({ name: createHostName, role: 'host', eventCode: createdEventData.code, eventName: createEventName, adminPin: createdEventData.pin })} className="w-full bg-white text-black font-bold py-3 rounded-xl">Ir al Evento</button>
@@ -169,6 +210,7 @@ const LoginScreen = ({ onJoin }) => {
       <div className="mb-8 text-center">
         <Aperture size={60} className="mx-auto mb-2 text-yellow-400" />
         <h1 className="text-4xl font-bold tracking-tighter">Clebrify</h1>
+        <p className="text-blue-200 text-sm mt-2">Tus fiestas, en vivo.</p>
       </div>
       <div className="w-full max-w-sm bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden">
         <div className="flex border-b border-white/10">
@@ -181,22 +223,20 @@ const LoginScreen = ({ onJoin }) => {
             <form onSubmit={handleJoinEvent} className="space-y-4">
               <input type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white uppercase" placeholder="CÓDIGO (Ej. AB12)" maxLength={6} />
               <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
-              <div className="flex items-center gap-2">
+              
+              <div className="bg-blue-500/10 p-2 rounded border border-blue-500/20">
+                 <p className="text-[10px] text-blue-200 text-center">✨ Tu sesión se mantendrá activa automáticamente.</p>
+              </div>
+
+              <div className="flex items-center gap-2 mt-2">
                  <input type="checkbox" checked={isAdminLogin} onChange={() => setIsAdminLogin(!isAdminLogin)} className="w-4 h-4" />
                  <span className="text-sm text-gray-300">Soy el Anfitrión</span>
               </div>
               {isAdminLogin && (
-                <input 
-                  type="tel" 
-                  value={adminPinInput} 
-                  onChange={(e) => setAdminPinInput(e.target.value)} 
-                  className="w-full bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3 text-yellow-200 placeholder-yellow-700" 
-                  placeholder="PIN Admin (o Master)" 
-                  maxLength={6} 
-                />
+                <input type="tel" value={adminPinInput} onChange={(e) => setAdminPinInput(e.target.value)} className="w-full bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3 text-yellow-200 placeholder-yellow-700" placeholder="PIN Admin" maxLength={6} />
               )}
-              <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl mt-2">
-                {loading ? 'Entrando...' : '¡Vamos!'}
+              <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl mt-2 shadow-lg shadow-blue-900/50">
+                {loading ? 'Verificando...' : 'Entrar a la Fiesta'}
               </button>
             </form>
           ) : (
@@ -208,7 +248,7 @@ const LoginScreen = ({ onJoin }) => {
                 <input type="password" value={masterPinInput} onChange={(e) => setMasterPinInput(e.target.value)} className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" placeholder="Código Autorizado" />
               </div>
               <button disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl mt-2">
-                 {loading ? 'Creando...' : 'Crear Evento'}
+                 {loading ? 'Configurando...' : 'Crear Evento'}
               </button>
             </form>
           )}
@@ -376,7 +416,7 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. NUEVA PANTALLA: PERFIL
+// 4. NUEVA PANTALLA: PERFIL (ACTUALIZADA CON PIN)
 const ProfileView = ({ user, onLogout }) => {
   const [showPin, setShowPin] = useState(false);
 
@@ -410,7 +450,7 @@ const ProfileView = ({ user, onLogout }) => {
          </div>
        </div>
 
-       {/* Sección ADMIN - RECORDATORIO PIN (Muestra solo el del evento, NUNCA el maestro) */}
+       {/* Sección ADMIN - RECORDATORIO PIN */}
        {user.role === 'host' && user.adminPin && (
           <div className="bg-yellow-50 rounded-2xl p-6 shadow-sm border border-yellow-100 mb-6">
              <div className="flex items-center gap-2 mb-2">
@@ -549,7 +589,7 @@ export default function App() {
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-black text-white">Cargando...</div>;
-  if (!currentUser) return <LoginScreen onJoin={handleLogin} />;
+  if (!currentUser) return <LoginScreen onJoin={handleLogin} userUid={firebaseUser?.uid} />;
 
   return (
     <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50 shadow-2xl relative">
@@ -557,13 +597,11 @@ export default function App() {
         <CameraView onClose={() => setView('feed')} onUpload={handleUpload} />
       ) : view === 'profile' ? (
         <>
-           {/* Cabecera Simple para Perfil */}
            <header className="bg-white border-b px-4 py-3 sticky top-0 z-10 flex items-center">
              <button onClick={() => setView('feed')} className="mr-3"><X size={24} className="text-gray-400"/></button>
              <h1 className="text-lg font-bold text-gray-800">Mi Perfil</h1>
            </header>
            <ProfileView user={currentUser} onLogout={handleLogout} />
-           {/* Barra de navegación inferior también en perfil */}
            <nav className="absolute bottom-0 w-full bg-white border-t h-16 flex justify-around items-center z-20 pb-safe">
             <button onClick={() => setView('feed')} className={`p-2 ${view === 'feed' ? 'text-blue-600' : 'text-gray-300'}`}>
               <Home size={28} />
