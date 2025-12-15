@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, Users } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -22,7 +22,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v10'; // Nueva versión con seguridad de usuarios
+const STORAGE_KEY = 'celebrify_session_v11'; // Versión actualizada
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -34,7 +34,6 @@ const generateCode = (length) => {
   return result;
 };
 
-// Normaliza nombres para evitar duplicados (ej: "Raul " es igual a "raul")
 const normalizeName = (name) => name.trim().toLowerCase().replace(/\s+/g, '');
 
 // --- COMPONENTES ---
@@ -69,7 +68,6 @@ const LoginScreen = ({ onJoin, userUid }) => {
       const newAdminPin = Math.floor(1000 + Math.random() * 9000).toString();
       const eventRef = doc(db, 'events', newEventCode);
       
-      // Creamos el evento
       await setDoc(eventRef, {
         eventName: createEventName,
         hostName: createHostName,
@@ -78,11 +76,11 @@ const LoginScreen = ({ onJoin, userUid }) => {
         code: newEventCode
       });
 
-      // ¡IMPORTANTE! Registramos al host como primer usuario protegido
+      // Registramos al host como usuario
       const hostId = normalizeName(createHostName);
       await setDoc(doc(db, 'events', newEventCode, 'users', hostId), {
           originalName: createHostName,
-          deviceId: userUid, // Vinculamos al dispositivo
+          deviceId: userUid,
           role: 'host',
           joinedAt: serverTimestamp()
       });
@@ -118,33 +116,28 @@ const LoginScreen = ({ onJoin, userUid }) => {
       const eventData = eventSnap.data();
       let role = 'guest';
 
-      // 1. Verificación de Admin
       if (isAdminLogin) {
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) {
           role = 'host';
         } else {
-          setError('PIN incorrecto.');
+          setError('PIN incorrecto. Acceso denegado.');
           setLoading(false);
           return;
         }
       }
 
-      // 2. PROTECCIÓN DE IDENTIDAD (El sistema anti-impostores)
       const cleanName = normalizeName(joinName);
       const userRef = doc(db, 'events', code, 'users', cleanName);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
           const userData = userSnap.data();
-          // Si el nombre existe, verificamos si es la misma persona (mismo dispositivo)
           if (userData.deviceId !== userUid) {
-              setError(`⚠️ El nombre "${joinName}" ya está en uso por otra persona. Por favor agrega tu apellido o usa otro.`);
+              setError(`⚠️ El nombre "${joinName}" ya está en uso. Usa otro.`);
               setLoading(false);
               return;
           }
-          // Si es el mismo dispositivo, ¡Bienvenido de nuevo! (Recupera su sesión)
       } else {
-          // Si no existe, lo registramos y lo protegemos
           await setDoc(userRef, {
               originalName: joinName,
               deviceId: userUid,
@@ -190,13 +183,13 @@ const LoginScreen = ({ onJoin, userUid }) => {
             </div>
           </div>
           <div className="bg-red-900/30 rounded-xl p-4 mb-6 border border-red-900/50">
-            <p className="text-xs text-red-300 uppercase font-bold mb-1">PIN Admin</p>
+            <p className="text-xs text-red-300 uppercase font-bold mb-1">PIN Admin (Específico)</p>
             <div className="flex items-center justify-between">
               <span className="text-xl font-mono font-bold text-white">{createdEventData.pin}</span>
               <button onClick={() => copyToClipboard(createdEventData.pin)} className="p-2"><Copy size={16} /></button>
             </div>
             <p className="text-[10px] text-red-200 mt-2 text-left leading-tight">
-                * Guarda este PIN para administrar.
+                * Guarda este PIN. Es la única llave para moderar ESTE evento específico.
             </p>
           </div>
           <button onClick={() => onJoin({ name: createHostName, role: 'host', eventCode: createdEventData.code, eventName: createEventName, adminPin: createdEventData.pin })} className="w-full bg-white text-black font-bold py-3 rounded-xl">Ir al Evento</button>
@@ -258,7 +251,7 @@ const LoginScreen = ({ onJoin, userUid }) => {
   );
 };
 
-// 2. Componente de Cámara (SIMPLE)
+// 2. Componente de Cámara
 const CameraView = ({ onClose, onUpload }) => {
   const fileInputRef = useRef(null);
   const canvasRef = useRef(null);
@@ -416,7 +409,7 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. NUEVA PANTALLA: PERFIL (ACTUALIZADA CON PIN)
+// 4. Perfil
 const ProfileView = ({ user, onLogout }) => {
   const [showPin, setShowPin] = useState(false);
 
@@ -437,7 +430,6 @@ const ProfileView = ({ user, onLogout }) => {
          </p>
        </div>
 
-       {/* Sección Invitados */}
        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
          <div className="flex items-center gap-2 mb-2">
             <QrCode size={18} className="text-gray-400"/>
@@ -450,7 +442,6 @@ const ProfileView = ({ user, onLogout }) => {
          </div>
        </div>
 
-       {/* Sección ADMIN - RECORDATORIO PIN */}
        {user.role === 'host' && user.adminPin && (
           <div className="bg-yellow-50 rounded-2xl p-6 shadow-sm border border-yellow-100 mb-6">
              <div className="flex items-center gap-2 mb-2">
@@ -488,7 +479,8 @@ export default function App() {
 
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [view, setView] = useState('feed'); // feed, camera, profile
+  const [peopleCount, setPeopleCount] = useState(0); // Nuevo estado para contador
+  const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -500,16 +492,29 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Escuchar POSTS y USUARIOS
   useEffect(() => {
     if (!firebaseUser || !currentUser) return;
+    
+    // 1. Escuchar Post
     const postsRef = collection(db, 'events', currentUser.eventCode, 'posts');
-    const q = query(postsRef);
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qPosts = query(postsRef);
+    const unsubPosts = onSnapshot(qPosts, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       data.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       setPosts(data);
     });
-    return () => unsubscribe();
+
+    // 2. Escuchar Usuarios (CONTADOR)
+    const usersRef = collection(db, 'events', currentUser.eventCode, 'users');
+    const unsubUsers = onSnapshot(usersRef, (snapshot) => {
+       setPeopleCount(snapshot.size); // Actualiza el número de personas
+    });
+
+    return () => {
+        unsubPosts();
+        unsubUsers();
+    };
   }, [firebaseUser, currentUser]);
 
   const handleLogin = (userData) => {
@@ -622,7 +627,16 @@ export default function App() {
                 Clebrify <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{currentUser.eventCode}</span>
               </h1>
             </div>
-            {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold">ADMIN</span>}
+            
+            <div className="flex items-center gap-3">
+               {/* CONTADOR DE PERSONAS */}
+               <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
+                  <Users size={12} className="text-gray-500"/>
+                  <span className="text-xs font-bold text-gray-600">{peopleCount}</span>
+               </div>
+
+               {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold border border-yellow-200">ADMIN</span>}
+            </div>
           </header>
 
           <main className="flex-1 overflow-y-auto pb-20 p-2">
