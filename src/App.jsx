@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -21,7 +21,7 @@ const MASTER_PIN = "123456";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v4'; 
+const STORAGE_KEY = 'celebrify_session_v5'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -192,20 +192,16 @@ const LoginScreen = ({ onJoin }) => {
   );
 };
 
-// 2. Componente de Cámara (SIMPLIFICADO: SOLO BOTÓN)
+// 2. Componente de Cámara (SIMPLE)
 const CameraView = ({ onClose, onUpload }) => {
   const fileInputRef = useRef(null);
   const canvasRef = useRef(null);
 
   const processAndUpload = (source, isVideo) => {
-    // Si es video, no podemos comprimirlo en canvas fácilmente en JS puro sin librerías pesadas
-    // Así que lo pasamos directo, PERO el tamaño ya fue verificado en handleFileSelect
     if (isVideo) {
-        onUpload(source); // source aquí es el DataURL directo
+        onUpload(source); 
         return;
     }
-
-    // Lógica de compresión para FOTOS
     const canvas = canvasRef.current;
     if (!canvas) return;
     const MAX_WIDTH = 800; 
@@ -228,13 +224,10 @@ const CameraView = ({ onClose, onUpload }) => {
     const file = e.target.files[0];
     if (file) {
       const isVideo = file.type.startsWith('video/');
-      
-      // REGLA DE ORO: Videos muy cortos solamente
-      if (isVideo && file.size > 2500000) { // Limite aprox 2.5MB
-          alert("⚠️ El video es muy pesado para la versión gratuita. Intenta uno más corto (3-5 segundos).");
+      if (isVideo && file.size > 2500000) { 
+          alert("⚠️ El video es muy pesado. Intenta uno más corto.");
           return;
       }
-
       const reader = new FileReader();
       reader.onload = (event) => {
         if (isVideo) {
@@ -252,38 +245,28 @@ const CameraView = ({ onClose, onUpload }) => {
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6">
        <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full text-white"><X size={24} /></button>
-       
        <div className="w-full max-w-sm text-center">
           <div className="mb-8 flex justify-center">
              <div className="w-24 h-24 bg-blue-900/50 rounded-full flex items-center justify-center border-2 border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
                 <Camera size={48} className="text-white" />
              </div>
           </div>
-          
           <h2 className="text-white text-2xl font-bold mb-2">Nuevo Momento</h2>
-          <p className="text-gray-400 mb-8 text-sm">Comparte una foto o un video corto con todos.</p>
-
+          <p className="text-gray-400 mb-8 text-sm">Comparte una foto o un video corto.</p>
           <button 
             onClick={() => fileInputRef.current.click()} 
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 text-lg shadow-xl transition transform active:scale-95"
           >
-             <Upload size={24} />
-             CÁMARA
+             <Upload size={24} /> CÁMARA
           </button>
-          
-          <p className="text-[10px] text-gray-500 mt-4 max-w-xs mx-auto">
-            * Al pulsar se abrirá tu galería o cámara nativa. Puedes elegir Fotos o Videos.
-          </p>
        </div>
-
        <canvas ref={canvasRef} className="hidden" />
-       {/* Input que acepta IMÁGENES Y VIDEOS */}
        <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
     </div>
   );
 };
 
-// 3. Tarjeta de Foto (CON SOPORTE DE VIDEO)
+// 3. Tarjeta de Foto
 const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment, onDeleteComment, onToggleLike }) => {
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
@@ -298,7 +281,6 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
 
   const isLiked = post.likes && post.likes.includes(currentUserId);
   const commentsList = post.comments || []; 
-  // Detectar si es video revisando el comienzo del string base64
   const isVideo = post.imageUrl && post.imageUrl.startsWith('data:video');
 
   return (
@@ -316,7 +298,6 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
           </button>
         )}
       </div>
-
       <div className="w-full bg-gray-100">
         {isVideo ? (
             <video controls className="w-full h-auto max-h-[500px]" src={post.imageUrl} />
@@ -324,7 +305,6 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
             <img src={post.imageUrl} alt="Momento" className="w-full h-auto object-cover" />
         )}
       </div>
-
       <div className="p-3">
         <div className="flex items-center gap-4 mb-3">
           <button onClick={() => onToggleLike(post.id, isLiked)} className={`transition ${isLiked ? 'text-red-500' : 'text-gray-800'}`}>
@@ -334,11 +314,9 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
             <MessageCircle size={26} />
           </button>
         </div>
-
         {(post.likes?.length > 0) && (
           <p className="text-sm font-bold text-gray-900 mb-2">{post.likes.length} Me gusta</p>
         )}
-
         <div className="space-y-1 mb-2">
           {commentsList.slice(showComments ? 0 : -2).map((comment, idx) => (
             <div key={idx} className="text-sm flex justify-between group">
@@ -355,7 +333,6 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
             <button onClick={() => setShowComments(true)} className="text-gray-400 text-xs mt-1">Ver los {commentsList.length} comentarios</button>
           )}
         </div>
-
         <form onSubmit={handleSubmitComment} className="flex items-center pt-2 border-t border-gray-100">
           <input 
             type="text" 
@@ -373,6 +350,47 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
+// 4. NUEVA PANTALLA: PERFIL
+const ProfileView = ({ user, onLogout }) => {
+  const copyCode = () => {
+    navigator.clipboard.writeText(user.eventCode);
+    alert("¡Código copiado!");
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-gray-50 p-6">
+       <div className="mb-8 mt-4 text-center">
+         <div className="w-24 h-24 bg-blue-900 text-white rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-4 shadow-xl">
+           {user.name.charAt(0).toUpperCase()}
+         </div>
+         <h2 className="text-2xl font-bold text-gray-800">{user.name}</h2>
+         <p className="text-blue-600 font-medium bg-blue-100 inline-block px-3 py-1 rounded-full text-xs mt-2 uppercase">
+            {user.role === 'host' ? 'Anfitrión del Evento' : 'Invitado'}
+         </p>
+       </div>
+
+       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+         <div className="flex items-center gap-2 mb-2">
+            <QrCode size={18} className="text-gray-400"/>
+            <p className="text-xs font-bold text-gray-400 uppercase">Invitar amigos</p>
+         </div>
+         <p className="text-gray-500 text-sm mb-3">Comparte este código para que otros se unan:</p>
+         <div onClick={copyCode} className="bg-gray-100 p-4 rounded-xl flex justify-between items-center cursor-pointer hover:bg-gray-200 transition">
+            <span className="text-3xl font-mono font-bold text-blue-900 tracking-widest">{user.eventCode}</span>
+            <Copy size={20} className="text-gray-400" />
+         </div>
+       </div>
+
+       <div className="mt-auto">
+         <button onClick={onLogout} className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition">
+           <LogOut size={20} /> Cerrar Sesión
+         </button>
+         <p className="text-center text-[10px] text-gray-300 mt-4">Clebrify v1.0</p>
+       </div>
+    </div>
+  );
+};
+
 // --- APP PRINCIPAL ---
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -382,7 +400,7 @@ export default function App() {
 
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [view, setView] = useState('feed');
+  const [view, setView] = useState('feed'); // feed, camera, profile
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -412,35 +430,32 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    if (confirm("¿Salir del evento?")) {
+    if (confirm("¿Seguro que quieres salir?")) {
       setCurrentUser(null);
       localStorage.removeItem(STORAGE_KEY);
+      setView('feed');
     }
   };
 
   const handleUpload = async (fileDataUrl) => {
     if (!firebaseUser || !currentUser) return;
-    
-    // Verificación de tamaño final antes de enviar a Firebase
-    // 1 char en base64 ~= 1 byte (aprox). 3MB limite estricto
     if (fileDataUrl.length > 3500000) { 
-       alert("⚠️ El archivo es demasiado grande. Intenta una foto o un video más corto.");
+       alert("⚠️ El archivo es demasiado grande.");
        return;
     }
-
     setView('feed');
     try {
       await addDoc(collection(db, 'events', currentUser.eventCode, 'posts'), {
         userId: firebaseUser.uid,
         userName: currentUser.name,
         userRole: currentUser.role,
-        imageUrl: fileDataUrl, // Aquí va la foto O el video en texto
+        imageUrl: fileDataUrl, 
         timestamp: serverTimestamp(),
         comments: [],
         likes: []
       });
     } catch (e) {
-      alert("Error subiendo. Puede que el archivo sea muy pesado.");
+      alert("Error subiendo.");
     }
   };
 
@@ -492,18 +507,36 @@ export default function App() {
     <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50 shadow-2xl relative">
       {view === 'camera' ? (
         <CameraView onClose={() => setView('feed')} onUpload={handleUpload} />
+      ) : view === 'profile' ? (
+        <>
+           {/* Cabecera Simple para Perfil */}
+           <header className="bg-white border-b px-4 py-3 sticky top-0 z-10 flex items-center">
+             <button onClick={() => setView('feed')} className="mr-3"><X size={24} className="text-gray-400"/></button>
+             <h1 className="text-lg font-bold text-gray-800">Mi Perfil</h1>
+           </header>
+           <ProfileView user={currentUser} onLogout={handleLogout} />
+           {/* Barra de navegación inferior también en perfil */}
+           <nav className="absolute bottom-0 w-full bg-white border-t h-16 flex justify-around items-center z-20 pb-safe">
+            <button onClick={() => setView('feed')} className={`p-2 ${view === 'feed' ? 'text-blue-600' : 'text-gray-300'}`}>
+              <Home size={28} />
+            </button>
+            <button onClick={() => setView('camera')} className="bg-blue-900 text-white p-4 rounded-full -translate-y-6 shadow-lg border-4 border-gray-50 hover:scale-105 transition">
+              <Camera size={28} />
+            </button>
+            <button onClick={() => setView('profile')} className={`p-2 ${view === 'profile' ? 'text-blue-600' : 'text-gray-300'}`}>
+              <User size={28} />
+            </button>
+          </nav>
+        </>
       ) : (
         <>
           <header className="bg-white/95 backdrop-blur-sm border-b px-4 py-3 flex justify-between items-center sticky top-0 z-10">
             <div>
               <h1 className="text-xl font-bold text-blue-900 flex items-center font-serif">
-                Celebrify <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{currentUser.eventCode}</span>
+                Clebrify <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{currentUser.eventCode}</span>
               </h1>
             </div>
-            <div className="flex items-center gap-3">
-               {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold">ADMIN</span>}
-               <button onClick={handleLogout} className="text-gray-400 hover:text-red-500"><LogOut size={20} /></button>
-            </div>
+            {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold">ADMIN</span>}
           </header>
 
           <main className="flex-1 overflow-y-auto pb-20 p-2">
@@ -537,7 +570,9 @@ export default function App() {
             <button onClick={() => setView('camera')} className="bg-blue-900 text-white p-4 rounded-full -translate-y-6 shadow-lg border-4 border-gray-50 hover:scale-105 transition">
               <Camera size={28} />
             </button>
-            <button className="p-2 text-gray-300"><User size={28} /></button>
+            <button onClick={() => setView('profile')} className={`p-2 ${view === 'profile' ? 'text-blue-600' : 'text-gray-300'}`}>
+              <User size={28} />
+            </button>
           </nav>
         </>
       )}
