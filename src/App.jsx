@@ -360,6 +360,7 @@ const CameraView = ({ onClose, onUpload, user }) => {
   const [flash, setFlash] = useState(false);
   const [cameraError, setCameraError] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [captureMode, setCaptureMode] = useState('photo'); // 'photo' o 'video'
 
   useEffect(() => {
     let activeStream = null;
@@ -430,8 +431,17 @@ const CameraView = ({ onClose, onUpload, user }) => {
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+  const file = e.target.files[0];
+  if (file) {
+    // Si es video, lo subimos directamente como Data URL
+    if (file.type.startsWith('video/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        onUpload(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Si es imagen, la procesamos como antes
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -440,13 +450,10 @@ const CameraView = ({ onClose, onUpload, user }) => {
           const MAX_WIDTH = 800;
           const finalWidth = Math.min(MAX_WIDTH, img.width);
           const finalHeight = img.height * (finalWidth / img.width);
-
           canvas.width = finalWidth;
           canvas.height = finalHeight;
-
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
-          
           const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
           onUpload(imageDataUrl);
         };
@@ -454,11 +461,8 @@ const CameraView = ({ onClose, onUpload, user }) => {
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
-  };
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
@@ -533,7 +537,7 @@ const CameraView = ({ onClose, onUpload, user }) => {
           </button>
         </div>
       )}
-      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
+      <input ref={fileInputRef} type="file" accept="image/*,video/*" capture="environment" className="hidden" onChange={handleFileSelect} />
     </div>
   );
 };
@@ -569,8 +573,12 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
         )}
       </div>
       <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
-        <img src={post.imageUrl} alt="Evento" className="w-full h-full object-cover" />
-      </div>
+  {post.imageUrl.startsWith('data:video') ? (
+    <video src={post.imageUrl} controls className="w-full h-full object-cover" />
+  ) : (
+    <img src={post.imageUrl} alt="Evento" className="w-full h-full object-cover" />
+  )}
+</div>
       <div className="p-3">
         <div className="flex items-center space-x-4 mb-3">
           <button 
