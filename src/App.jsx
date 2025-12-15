@@ -14,14 +14,14 @@ const firebaseConfig = {
   appId: "1:486495542360:web:8507dd9206611ccfa3fe2d"
 };
 
-// --- PIN MAESTRO PARA CREAR EVENTOS ---
+// --- PIN MAESTRO (TU LLAVE UNIVERSAL) ---
 const MASTER_PIN = "123456"; 
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v6'; 
+const STORAGE_KEY = 'celebrify_session_v7'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -95,11 +95,13 @@ const LoginScreen = ({ onJoin }) => {
       }
       const eventData = docSnap.data();
       let role = 'guest';
+      
       if (isAdminLogin) {
-        if (adminPinInput === eventData.adminPin) {
+        // AQUÍ ESTÁ LA MAGIA: Tu Master PIN ahora funciona como llave universal
+        if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) {
           role = 'host';
         } else {
-          setError('PIN incorrecto.');
+          setError('PIN incorrecto. Usa el del evento o el Maestro.');
           setLoading(false);
           return;
         }
@@ -133,11 +135,12 @@ const LoginScreen = ({ onJoin }) => {
             </div>
           </div>
           <div className="bg-red-900/30 rounded-xl p-4 mb-6 border border-red-900/50">
-            <p className="text-xs text-red-300 uppercase font-bold mb-1">PIN Admin</p>
+            <p className="text-xs text-red-300 uppercase font-bold mb-1">PIN Admin (Específico)</p>
             <div className="flex items-center justify-between">
               <span className="text-xl font-mono font-bold text-white">{createdEventData.pin}</span>
               <button onClick={() => copyToClipboard(createdEventData.pin)} className="p-2"><Copy size={16} /></button>
             </div>
+            <p className="text-[9px] text-red-200 mt-2">* También puedes usar tu PIN Maestro ({MASTER_PIN}) para entrar.</p>
           </div>
           <button onClick={() => onJoin({ name: createHostName, role: 'host', eventCode: createdEventData.code, eventName: createEventName })} className="w-full bg-white text-black font-bold py-3 rounded-xl">Ir al Evento</button>
         </div>
@@ -167,7 +170,14 @@ const LoginScreen = ({ onJoin }) => {
                  <span className="text-sm text-gray-300">Soy el Anfitrión</span>
               </div>
               {isAdminLogin && (
-                <input type="tel" value={adminPinInput} onChange={(e) => setAdminPinInput(e.target.value)} className="w-full bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3 text-yellow-200 placeholder-yellow-700" placeholder="PIN Admin" maxLength={4} />
+                <input 
+                  type="tel" 
+                  value={adminPinInput} 
+                  onChange={(e) => setAdminPinInput(e.target.value)} 
+                  className="w-full bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3 text-yellow-200 placeholder-yellow-700" 
+                  placeholder="PIN Admin o Maestro" 
+                  maxLength={6} 
+                />
               )}
               <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl mt-2">
                 {loading ? 'Entrando...' : '¡Vamos!'}
@@ -179,7 +189,7 @@ const LoginScreen = ({ onJoin }) => {
               <input type="text" value={createHostName} onChange={(e) => setCreateHostName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
               <div className="bg-red-500/10 p-3 rounded-xl border border-red-500/30">
                 <label className="text-[10px] uppercase font-bold text-red-300 mb-1 block flex items-center gap-1"><Lock size={10} /> Solo Personal Autorizado</label>
-                <input type="password" value={masterPinInput} onChange={(e) => setMasterPinInput(e.target.value)} className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" placeholder="PIN Maestro" />
+                <input type="password" value={masterPinInput} onChange={(e) => setMasterPinInput(e.target.value)} className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" placeholder="PIN Maestro (123456)" />
               </div>
               <button disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl mt-2">
                  {loading ? 'Creando...' : 'Crear Evento'}
@@ -350,7 +360,7 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. NUEVA PANTALLA: PERFIL (ARREGLADA)
+// 4. NUEVA PANTALLA: PERFIL
 const ProfileView = ({ user, onLogout }) => {
   const copyCode = () => {
     navigator.clipboard.writeText(user.eventCode);
@@ -381,7 +391,6 @@ const ProfileView = ({ user, onLogout }) => {
          </div>
        </div>
 
-       {/* Botón movido hacia arriba para evitar la cámara */}
        <div className="mt-4">
          <button onClick={onLogout} className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition">
            <LogOut size={20} /> Cerrar Sesión
