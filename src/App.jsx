@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -21,7 +21,7 @@ const MASTER_PIN = "123456";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v7'; 
+const STORAGE_KEY = 'celebrify_session_v8'; // Actualizado para guardar el PIN en sesión
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -97,7 +97,6 @@ const LoginScreen = ({ onJoin }) => {
       let role = 'guest';
       
       if (isAdminLogin) {
-        // AQUÍ ESTÁ LA MAGIA: Tu Master PIN ahora funciona como llave universal
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) {
           role = 'host';
         } else {
@@ -106,7 +105,14 @@ const LoginScreen = ({ onJoin }) => {
           return;
         }
       }
-      onJoin({ name: joinName, role, eventCode: code, eventName: eventData.eventName });
+      // Guardamos el PIN real del evento en la sesión para mostrarlo en el perfil
+      onJoin({ 
+          name: joinName, 
+          role, 
+          eventCode: code, 
+          eventName: eventData.eventName,
+          adminPin: role === 'host' ? eventData.adminPin : null 
+      });
     } catch (err) {
       setError('Error de conexión.');
     } finally {
@@ -142,7 +148,7 @@ const LoginScreen = ({ onJoin }) => {
             </div>
             <p className="text-[9px] text-red-200 mt-2">* También puedes usar tu PIN Maestro ({MASTER_PIN}) para entrar.</p>
           </div>
-          <button onClick={() => onJoin({ name: createHostName, role: 'host', eventCode: createdEventData.code, eventName: createEventName })} className="w-full bg-white text-black font-bold py-3 rounded-xl">Ir al Evento</button>
+          <button onClick={() => onJoin({ name: createHostName, role: 'host', eventCode: createdEventData.code, eventName: createEventName, adminPin: createdEventData.pin })} className="w-full bg-white text-black font-bold py-3 rounded-xl">Ir al Evento</button>
         </div>
       </div>
     );
@@ -360,8 +366,10 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. NUEVA PANTALLA: PERFIL
+// 4. NUEVA PANTALLA: PERFIL (ACTUALIZADA CON PIN)
 const ProfileView = ({ user, onLogout }) => {
+  const [showPin, setShowPin] = useState(false);
+
   const copyCode = () => {
     navigator.clipboard.writeText(user.eventCode);
     alert("¡Código copiado!");
@@ -379,6 +387,7 @@ const ProfileView = ({ user, onLogout }) => {
          </p>
        </div>
 
+       {/* Sección Invitados */}
        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
          <div className="flex items-center gap-2 mb-2">
             <QrCode size={18} className="text-gray-400"/>
@@ -390,6 +399,25 @@ const ProfileView = ({ user, onLogout }) => {
             <Copy size={20} className="text-gray-400" />
          </div>
        </div>
+
+       {/* Sección ADMIN - RECORDATORIO PIN */}
+       {user.role === 'host' && user.adminPin && (
+          <div className="bg-yellow-50 rounded-2xl p-6 shadow-sm border border-yellow-100 mb-6">
+             <div className="flex items-center gap-2 mb-2">
+                <Lock size={18} className="text-yellow-600"/>
+                <p className="text-xs font-bold text-yellow-600 uppercase">PIN de Administrador</p>
+             </div>
+             <p className="text-yellow-800 text-sm mb-3">Esta es la clave para moderar este evento:</p>
+             <div className="bg-white p-4 rounded-xl flex justify-between items-center border border-yellow-200">
+                <span className="text-xl font-mono font-bold text-gray-800 tracking-widest">
+                   {showPin ? user.adminPin : '••••'}
+                </span>
+                <button onClick={() => setShowPin(!showPin)} className="text-gray-400 hover:text-blue-600">
+                   {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+             </div>
+          </div>
+       )}
 
        <div className="mt-4">
          <button onClick={onLogout} className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition">
