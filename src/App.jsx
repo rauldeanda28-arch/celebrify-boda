@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 // --- PIN MAESTRO (TU LLAVE UNIVERSAL) ---
-const MASTER_PIN = "123456"; 
+const MASTER_PIN = "M4573R"; 
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
