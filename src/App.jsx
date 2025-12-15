@@ -21,7 +21,7 @@ const MASTER_PIN = "123456";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v5'; 
+const STORAGE_KEY = 'celebrify_session_v6'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -350,7 +350,7 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. NUEVA PANTALLA: PERFIL
+// 4. NUEVA PANTALLA: PERFIL (ARREGLADA)
 const ProfileView = ({ user, onLogout }) => {
   const copyCode = () => {
     navigator.clipboard.writeText(user.eventCode);
@@ -358,7 +358,7 @@ const ProfileView = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 p-6">
+    <div className="flex flex-col h-full bg-gray-50 p-6 overflow-y-auto pb-32">
        <div className="mb-8 mt-4 text-center">
          <div className="w-24 h-24 bg-blue-900 text-white rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-4 shadow-xl">
            {user.name.charAt(0).toUpperCase()}
@@ -381,7 +381,8 @@ const ProfileView = ({ user, onLogout }) => {
          </div>
        </div>
 
-       <div className="mt-auto">
+       {/* Botón movido hacia arriba para evitar la cámara */}
+       <div className="mt-4">
          <button onClick={onLogout} className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition">
            <LogOut size={20} /> Cerrar Sesión
          </button>
