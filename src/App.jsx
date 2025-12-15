@@ -14,14 +14,15 @@ const firebaseConfig = {
   appId: "1:486495542360:web:8507dd9206611ccfa3fe2d"
 };
 
-// --- PIN MAESTRO (TU LLAVE UNIVERSAL) ---
-const MASTER_PIN = "M4573R"; 
+// --- SISTEMA DE SEGURIDAD ---
+const MASTER_PIN = "123456";  // <--- SOLO TUYO (Abre todo)
+const CREATOR_PIN = "777777"; // <--- PARA CLIENTES (Solo deja crear, no espiar)
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v8'; // Actualizado para guardar el PIN en sesión
+const STORAGE_KEY = 'celebrify_session_v9'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -52,10 +53,13 @@ const LoginScreen = ({ onJoin }) => {
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!createEventName || !createHostName || !masterPinInput) return;
-    if (masterPinInput !== MASTER_PIN) {
-        setError('⛔ PIN Maestro incorrecto.');
+    
+    // SEGURIDAD: Aceptamos Master PIN (Tú) O Creator PIN (Clientes)
+    if (masterPinInput !== MASTER_PIN && masterPinInput !== CREATOR_PIN) {
+        setError('⛔ Código de autorización inválido.');
         return;
     }
+
     setLoading(true);
     setError('');
     try {
@@ -97,20 +101,24 @@ const LoginScreen = ({ onJoin }) => {
       let role = 'guest';
       
       if (isAdminLogin) {
+        // SEGURIDAD CRÍTICA: 
+        // Solo entra si es el PIN del evento O el MASTER PIN.
+        // El CREATOR_PIN (777777) NO FUNCIONA AQUÍ.
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) {
           role = 'host';
         } else {
-          setError('PIN incorrecto. Usa el del evento o el Maestro.');
+          setError('PIN incorrecto. Acceso denegado.');
           setLoading(false);
           return;
         }
       }
-      // Guardamos el PIN real del evento en la sesión para mostrarlo en el perfil
+      
       onJoin({ 
           name: joinName, 
           role, 
           eventCode: code, 
           eventName: eventData.eventName,
+          // Guardamos SIEMPRE el PIN real del evento, no el maestro
           adminPin: role === 'host' ? eventData.adminPin : null 
       });
     } catch (err) {
@@ -146,7 +154,9 @@ const LoginScreen = ({ onJoin }) => {
               <span className="text-xl font-mono font-bold text-white">{createdEventData.pin}</span>
               <button onClick={() => copyToClipboard(createdEventData.pin)} className="p-2"><Copy size={16} /></button>
             </div>
-            <p className="text-[9px] text-red-200 mt-2">* También puedes usar tu PIN Maestro ({MASTER_PIN}) para entrar.</p>
+            <p className="text-[10px] text-red-200 mt-2 text-left leading-tight">
+                * Guarda este PIN. Es la única llave para moderar ESTE evento específico.
+            </p>
           </div>
           <button onClick={() => onJoin({ name: createHostName, role: 'host', eventCode: createdEventData.code, eventName: createEventName, adminPin: createdEventData.pin })} className="w-full bg-white text-black font-bold py-3 rounded-xl">Ir al Evento</button>
         </div>
@@ -181,7 +191,7 @@ const LoginScreen = ({ onJoin }) => {
                   value={adminPinInput} 
                   onChange={(e) => setAdminPinInput(e.target.value)} 
                   className="w-full bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3 text-yellow-200 placeholder-yellow-700" 
-                  placeholder="PIN Admin o Maestro" 
+                  placeholder="PIN Admin (o Master)" 
                   maxLength={6} 
                 />
               )}
@@ -194,8 +204,8 @@ const LoginScreen = ({ onJoin }) => {
               <input type="text" value={createEventName} onChange={(e) => setCreateEventName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Nombre del Evento" />
               <input type="text" value={createHostName} onChange={(e) => setCreateHostName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
               <div className="bg-red-500/10 p-3 rounded-xl border border-red-500/30">
-                <label className="text-[10px] uppercase font-bold text-red-300 mb-1 block flex items-center gap-1"><Lock size={10} /> Solo Personal Autorizado</label>
-                <input type="password" value={masterPinInput} onChange={(e) => setMasterPinInput(e.target.value)} className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" placeholder="PIN Maestro (123456)" />
+                <label className="text-[10px] uppercase font-bold text-red-300 mb-1 block flex items-center gap-1"><Lock size={10} /> Clave de Creación</label>
+                <input type="password" value={masterPinInput} onChange={(e) => setMasterPinInput(e.target.value)} className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" placeholder="Código Autorizado" />
               </div>
               <button disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl mt-2">
                  {loading ? 'Creando...' : 'Crear Evento'}
@@ -366,7 +376,7 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. NUEVA PANTALLA: PERFIL (ACTUALIZADA CON PIN)
+// 4. NUEVA PANTALLA: PERFIL
 const ProfileView = ({ user, onLogout }) => {
   const [showPin, setShowPin] = useState(false);
 
@@ -400,7 +410,7 @@ const ProfileView = ({ user, onLogout }) => {
          </div>
        </div>
 
-       {/* Sección ADMIN - RECORDATORIO PIN */}
+       {/* Sección ADMIN - RECORDATORIO PIN (Muestra solo el del evento, NUNCA el maestro) */}
        {user.role === 'host' && user.adminPin && (
           <div className="bg-yellow-50 rounded-2xl p-6 shadow-sm border border-yellow-100 mb-6">
              <div className="flex items-center gap-2 mb-2">
