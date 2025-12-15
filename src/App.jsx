@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Send } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -14,11 +14,14 @@ const firebaseConfig = {
   appId: "1:486495542360:web:8507dd9206611ccfa3fe2d"
 };
 
+// --- PIN MAESTRO PARA CREAR EVENTOS ---
+const MASTER_PIN = "123456"; // <--- ¡AQUÍ PUEDES CAMBIAR TU CONTRASEÑA MAESTRA!
+
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v2'; // Cambié la clave para limpiar errores viejos
+const STORAGE_KEY = 'celebrify_session_v3'; // Cambiamos versión por si acaso
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -47,11 +50,19 @@ const LoginScreen = ({ onJoin }) => {
   // Estados para Crear
   const [createEventName, setCreateEventName] = useState('');
   const [createHostName, setCreateHostName] = useState('');
+  const [masterPinInput, setMasterPinInput] = useState(''); // Nuevo estado para el PIN Maestro
   const [createdEventData, setCreatedEventData] = useState(null);
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
-    if (!createEventName || !createHostName) return;
+    if (!createEventName || !createHostName || !masterPinInput) return;
+    
+    // --- VERIFICACIÓN DEL PIN MAESTRO ---
+    if (masterPinInput !== MASTER_PIN) {
+        setError('⛔ PIN Maestro incorrecto. No tienes permiso para crear eventos.');
+        return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -193,6 +204,19 @@ const LoginScreen = ({ onJoin }) => {
             <form onSubmit={handleCreateEvent} className="space-y-4">
               <input type="text" value={createEventName} onChange={(e) => setCreateEventName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Nombre del Evento" />
               <input type="text" value={createHostName} onChange={(e) => setCreateHostName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
+              
+              {/* CAMPO DE PIN MAESTRO */}
+              <div className="bg-red-500/10 p-3 rounded-xl border border-red-500/30">
+                <label className="text-[10px] uppercase font-bold text-red-300 mb-1 block flex items-center gap-1"><Lock size={10} /> Solo Personal Autorizado</label>
+                <input 
+                  type="password" 
+                  value={masterPinInput} 
+                  onChange={(e) => setMasterPinInput(e.target.value)} 
+                  className="w-full bg-black/40 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm" 
+                  placeholder="PIN Maestro" 
+                />
+              </div>
+
               <button disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl mt-2">
                  {loading ? 'Creando...' : 'Crear Evento'}
               </button>
@@ -241,7 +265,6 @@ const CameraView = ({ onClose, onUpload }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // REDUCIR CALIDAD (Esencial para que funcione)
     const MAX_WIDTH = 600; 
     let width = isVideo ? source.videoWidth : source.width;
     let height = isVideo ? source.videoHeight : source.height;
@@ -256,8 +279,6 @@ const CameraView = ({ onClose, onUpload }) => {
     
     const ctx = canvas.getContext('2d');
     ctx.drawImage(source, 0, 0, width, height);
-    
-    // Convertir a JPG ligero
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.6);
     onUpload(imageDataUrl);
   };
@@ -269,12 +290,10 @@ const CameraView = ({ onClose, onUpload }) => {
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Bloqueamos video para que no falle
       if(file.type.startsWith('video/')) {
         alert("⚠️ Solo se permiten FOTOS en esta versión gratuita.");
         return;
       }
-
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -326,15 +345,14 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
     if (!commentText.trim()) return;
     onAddComment(post.id, commentText);
     setCommentText('');
-    setShowComments(true); // Abrir comentarios al enviar
+    setShowComments(true);
   };
 
   const isLiked = post.likes && post.likes.includes(currentUserId);
-  const commentsList = post.comments || []; // Seguridad si está vacío
+  const commentsList = post.comments || []; 
 
   return (
     <div className="bg-white mb-4 shadow-sm border-b border-gray-100 pb-2">
-      {/* Header Post */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-xs shadow">
@@ -349,12 +367,10 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
         )}
       </div>
 
-      {/* Imagen */}
       <div className="w-full bg-gray-100">
         <img src={post.imageUrl} alt="Momento" className="w-full h-auto object-cover" />
       </div>
 
-      {/* Acciones y Comentarios */}
       <div className="p-3">
         <div className="flex items-center gap-4 mb-3">
           <button onClick={() => onToggleLike(post.id, isLiked)} className={`transition ${isLiked ? 'text-red-500' : 'text-gray-800'}`}>
@@ -365,12 +381,10 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
           </button>
         </div>
 
-        {/* Lista de Likes */}
         {(post.likes?.length > 0) && (
           <p className="text-sm font-bold text-gray-900 mb-2">{post.likes.length} Me gusta</p>
         )}
 
-        {/* Lista de Comentarios */}
         <div className="space-y-1 mb-2">
           {commentsList.slice(showComments ? 0 : -2).map((comment, idx) => (
             <div key={idx} className="text-sm flex justify-between group">
@@ -388,7 +402,6 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
           )}
         </div>
 
-        {/* Input Comentario (Visible siempre) */}
         <form onSubmit={handleSubmitComment} className="flex items-center pt-2 border-t border-gray-100">
           <input 
             type="text" 
@@ -418,7 +431,6 @@ export default function App() {
   const [view, setView] = useState('feed');
   const [loading, setLoading] = useState(true);
 
-  // Autenticación
   useEffect(() => {
     signInAnonymously(auth).catch(e => console.error(e));
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -428,7 +440,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Cargar Posts
   useEffect(() => {
     if (!firebaseUser || !currentUser) return;
     const postsRef = collection(db, 'events', currentUser.eventCode, 'posts');
@@ -453,16 +464,12 @@ export default function App() {
     }
   };
 
-  // Subir Foto
   const handleUpload = async (imageDataUrl) => {
     if (!firebaseUser || !currentUser) return;
-    
-    // Verificación de seguridad de tamaño
     if (imageDataUrl.length > 2000000) {
        alert("Imagen muy grande. Intenta tomarla de nuevo.");
        return;
     }
-
     setView('feed');
     try {
       await addDoc(collection(db, 'events', currentUser.eventCode, 'posts'), {
@@ -471,7 +478,7 @@ export default function App() {
         userRole: currentUser.role,
         imageUrl: imageDataUrl,
         timestamp: serverTimestamp(),
-        comments: [], // Importante inicializar vacío
+        comments: [],
         likes: []
       });
     } catch (e) {
@@ -479,12 +486,10 @@ export default function App() {
     }
   };
 
-  // COMENTAR (ARREGLADO CON ARRAYUNION)
   const handleAddComment = async (postId, text) => {
     if (!firebaseUser || !currentUser) return;
     try {
       const postRef = doc(db, 'events', currentUser.eventCode, 'posts', postId);
-      // ArrayUnion es la clave para que no falle nunca
       await updateDoc(postRef, {
         comments: arrayUnion({
           text,
@@ -520,10 +525,8 @@ export default function App() {
   const handleToggleLike = async (postId, isLiked) => {
     if (!firebaseUser) return;
     const postRef = doc(db, 'events', currentUser.eventCode, 'posts', postId);
-    // Usamos arrayUnion y arrayRemove para likes perfectos
     if (isLiked) {
-       await updateDoc(postRef, { likes: arrayUnion(firebaseUser.uid) }); // Pequeño hack: primero agregamos por si acaso
-       // Firebase no tiene arrayRemove simple sin valor exacto, asi que lo hacemos manual o con arrayRemove
+       await updateDoc(postRef, { likes: arrayUnion(firebaseUser.uid) });
        const post = posts.find(p => p.id === postId);
        const newLikes = (post.likes || []).filter(uid => uid !== firebaseUser.uid);
        await updateDoc(postRef, { likes: newLikes });
