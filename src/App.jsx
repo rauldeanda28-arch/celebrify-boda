@@ -24,7 +24,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v12'; 
+const STORAGE_KEY = 'celebrify_session_v13'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -410,8 +410,8 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. Perfil con DESCARGA MASIVA
-const ProfileView = ({ user, onLogout, posts }) => {
+// 4. Perfil con LISTA DE INVITADOS
+const ProfileView = ({ user, onLogout, posts, usersList }) => {
   const [showPin, setShowPin] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -476,9 +476,28 @@ const ProfileView = ({ user, onLogout, posts }) => {
          </div>
        </div>
 
+       {/* SECCIÓN NUEVA: LISTA DE INVITADOS */}
+       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+         <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+                <Users size={18} className="text-blue-600"/>
+                <p className="text-xs font-bold text-blue-600 uppercase">Invitados ({usersList.length})</p>
+            </div>
+         </div>
+         <div className="max-h-40 overflow-y-auto space-y-2">
+            {usersList.map((u, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 p-2 rounded-lg">
+                    <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                        {u.originalName.charAt(0).toUpperCase()}
+                    </div>
+                    {u.originalName} {u.role === 'host' && '👑'}
+                </div>
+            ))}
+         </div>
+       </div>
+
        {user.role === 'host' && (
          <>
-             {/* BOTÓN DE DESCARGA */}
              <button 
                 onClick={handleDownloadAll} 
                 disabled={isDownloading}
@@ -534,7 +553,7 @@ export default function App() {
 
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [peopleCount, setPeopleCount] = useState(0); 
+  const [usersList, setUsersList] = useState([]); // Estado para la lista real de nombres
   const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
 
@@ -559,10 +578,11 @@ export default function App() {
       setPosts(data);
     });
 
-    // Escuchar Usuarios
+    // Escuchar Usuarios (Y guardar la lista)
     const usersRef = collection(db, 'events', currentUser.eventCode, 'users');
     const unsubUsers = onSnapshot(usersRef, (snapshot) => {
-       setPeopleCount(snapshot.size); 
+       const users = snapshot.docs.map(doc => doc.data());
+       setUsersList(users); // Guardamos la lista completa
     });
 
     return () => {
@@ -660,8 +680,8 @@ export default function App() {
              <button onClick={() => setView('feed')} className="mr-3"><X size={24} className="text-gray-400"/></button>
              <h1 className="text-lg font-bold text-gray-800">Mi Perfil</h1>
            </header>
-           {/* Pasamos 'posts' al perfil para que pueda descargarlos */}
-           <ProfileView user={currentUser} onLogout={handleLogout} posts={posts} />
+           {/* Pasamos 'usersList' al perfil */}
+           <ProfileView user={currentUser} onLogout={handleLogout} posts={posts} usersList={usersList} />
            <nav className="absolute bottom-0 w-full bg-white border-t h-16 flex justify-around items-center z-20 pb-safe">
             <button onClick={() => setView('feed')} className={`p-2 ${view === 'feed' ? 'text-blue-600' : 'text-gray-300'}`}>
               <Home size={28} />
@@ -686,7 +706,7 @@ export default function App() {
             <div className="flex items-center gap-3">
                <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
                   <Users size={12} className="text-gray-500"/>
-                  <span className="text-xs font-bold text-gray-600">{peopleCount}</span>
+                  <span className="text-xs font-bold text-gray-600">{usersList.length}</span>
                </div>
                {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold border border-yellow-200">ADMIN</span>}
             </div>
