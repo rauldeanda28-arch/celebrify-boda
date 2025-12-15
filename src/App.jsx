@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, Send, MessageCircle, X, LogOut, Aperture, Heart, MoreHorizontal, PlusCircle, Lock, Copy, Share2, ArrowRight, ArrowLeft, Upload, Image as ImageIcon, Video } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Send } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -18,7 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v1';
+const STORAGE_KEY = 'celebrify_session_v2'; // Cambié la clave para limpiar errores viejos
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -32,7 +32,7 @@ const generateCode = (length) => {
 
 // --- COMPONENTES ---
 
-// 1. Pantalla de Login / Bienvenida (TU VERSIÓN ORIGINAL)
+// 1. Pantalla de Login / Bienvenida
 const LoginScreen = ({ onJoin }) => {
   const [mode, setMode] = useState('join');
   const [loading, setLoading] = useState(false);
@@ -72,7 +72,7 @@ const LoginScreen = ({ onJoin }) => {
       setMode('success_create');
     } catch (err) {
       console.error(err);
-      setError('Error al crear evento. Verifica tu configuración de Firebase.');
+      setError('Error al crear. Verifica tu conexión.');
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ const LoginScreen = ({ onJoin }) => {
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        setError('¡Este código de evento no existe!');
+        setError('¡Código incorrecto!');
         setLoading(false);
         return;
       }
@@ -102,7 +102,7 @@ const LoginScreen = ({ onJoin }) => {
         if (adminPinInput === eventData.adminPin) {
           role = 'host';
         } else {
-          setError('PIN de administrador incorrecto.');
+          setError('PIN incorrecto.');
           setLoading(false);
           return;
         }
@@ -116,7 +116,6 @@ const LoginScreen = ({ onJoin }) => {
       });
 
     } catch (err) {
-      console.error(err);
       setError('Error de conexión.');
     } finally {
       setLoading(false);
@@ -130,169 +129,72 @@ const LoginScreen = ({ onJoin }) => {
 
   if (mode === 'success_create') {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-900 via-blue-950 to-black text-white p-6">
-        <div className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-2xl w-full max-w-sm text-center">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30">
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-6">
+        <div className="bg-gray-800 p-8 rounded-3xl w-full max-w-sm text-center border border-gray-700">
+          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Share2 size={32} className="text-white" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">¡Evento Creado!</h2>
-          <p className="text-blue-200 text-sm mb-6">Comparte este código con tus invitados.</p>
-
-          <div className="bg-black/30 rounded-xl p-4 mb-4 border border-white/10">
-            <p className="text-xs text-blue-300 uppercase font-bold mb-1">Código de Invitados</p>
+          <h2 className="text-2xl font-bold mb-2">¡Evento Listo!</h2>
+          <div className="bg-black/50 rounded-xl p-4 mb-4 mt-6">
+            <p className="text-xs text-gray-400 uppercase font-bold mb-1">Código de Invitados</p>
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-mono font-bold tracking-widest text-yellow-400">{createdEventData.code}</span>
-              <button onClick={() => copyToClipboard(createdEventData.code)} className="p-2 hover:bg-white/10 rounded-full transition">
-                <Copy size={20} />
-              </button>
+              <span className="text-3xl font-mono font-bold text-yellow-400">{createdEventData.code}</span>
+              <button onClick={() => copyToClipboard(createdEventData.code)} className="p-2"><Copy size={20} /></button>
             </div>
           </div>
-
-          <div className="bg-red-500/20 rounded-xl p-4 mb-6 border border-red-500/30">
-            <div className="flex items-center gap-2 mb-1">
-              <Lock size={12} className="text-red-300" />
-              <p className="text-xs text-red-300 uppercase font-bold">Tu PIN de Admin (Secreto)</p>
-            </div>
+          <div className="bg-red-900/30 rounded-xl p-4 mb-6 border border-red-900/50">
+            <p className="text-xs text-red-300 uppercase font-bold mb-1">PIN Admin</p>
             <div className="flex items-center justify-between">
               <span className="text-xl font-mono font-bold text-white">{createdEventData.pin}</span>
-              <button onClick={() => copyToClipboard(createdEventData.pin)} className="p-2 hover:bg-white/10 rounded-full transition">
-                <Copy size={16} />
-              </button>
+              <button onClick={() => copyToClipboard(createdEventData.pin)} className="p-2"><Copy size={16} /></button>
             </div>
           </div>
-
-          <button 
-            onClick={() => {
-              onJoin({
-                 name: createHostName, 
-                 role: 'host',
-                 eventCode: createdEventData.code,
-                 eventName: createEventName
-              });
-            }}
-            className="w-full bg-white text-blue-900 font-bold py-3 rounded-xl shadow-lg hover:bg-blue-50 transition"
-          >
-            Ir a mi Evento
-          </button>
+          <button onClick={() => onJoin({ name: createHostName, role: 'host', eventCode: createdEventData.code, eventName: createEventName })} className="w-full bg-white text-black font-bold py-3 rounded-xl">Ir al Evento</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-900 via-blue-950 to-black text-white p-6">
-      <div className="mb-6 flex flex-col items-center animate-bounce-slow">
-        <Aperture size={50} className="mb-2 text-yellow-400" />
-        <h1 className="text-3xl font-bold tracking-tighter">Clebrify</h1>
+    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-900 to-black text-white p-6">
+      <div className="mb-8 text-center">
+        <Aperture size={60} className="mx-auto mb-2 text-yellow-400" />
+        <h1 className="text-4xl font-bold tracking-tighter">Clebrify</h1>
       </div>
 
-      <div className="w-full max-w-sm bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl overflow-hidden">
+      <div className="w-full max-w-sm bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden">
         <div className="flex border-b border-white/10">
-          <button 
-            onClick={() => setMode('join')}
-            className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition ${mode === 'join' ? 'bg-white/10 text-yellow-400' : 'text-blue-300 hover:text-white'}`}
-          >
-            Unirse
-          </button>
-          <button 
-            onClick={() => setMode('create')}
-            className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition ${mode === 'create' ? 'bg-white/10 text-yellow-400' : 'text-blue-300 hover:text-white'}`}
-          >
-            Crear
-          </button>
+          <button onClick={() => setMode('join')} className={`flex-1 py-4 font-bold ${mode === 'join' ? 'bg-white/10 text-yellow-400' : 'text-gray-400'}`}>Unirse</button>
+          <button onClick={() => setMode('create')} className={`flex-1 py-4 font-bold ${mode === 'create' ? 'bg-white/10 text-yellow-400' : 'text-gray-400'}`}>Crear</button>
         </div>
 
         <div className="p-6">
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-xs flex items-center gap-2">
-               <X size={14} /> {error}
-            </div>
-          )}
+          {error && <div className="mb-4 p-2 bg-red-500/20 text-red-200 text-xs rounded text-center">{error}</div>}
 
           {mode === 'join' ? (
             <form onSubmit={handleJoinEvent} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold uppercase text-blue-200 ml-1">Código del Evento</label>
-                <input
-                  type="text"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-blue-400/50 focus:outline-none focus:border-yellow-400/50 transition font-mono tracking-widest uppercase"
-                  placeholder="Ej. AB12CD"
-                  maxLength={6}
-                />
+              <input type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white uppercase" placeholder="CÓDIGO (Ej. AB12)" maxLength={6} />
+              <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
+              
+              <div className="flex items-center gap-2">
+                 <input type="checkbox" checked={isAdminLogin} onChange={() => setIsAdminLogin(!isAdminLogin)} className="w-4 h-4" />
+                 <span className="text-sm text-gray-300">Soy el Anfitrión</span>
               </div>
-              <div>
-                <label className="text-xs font-bold uppercase text-blue-200 ml-1">Tu Nombre</label>
-                <input
-                  type="text"
-                  value={joinName}
-                  onChange={(e) => setJoinName(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-blue-400/50 focus:outline-none focus:border-yellow-400/50 transition"
-                  placeholder="Ej. Ana García"
-                />
-              </div>
-
-              <div className="pt-2">
-                <label className="flex items-center space-x-2 cursor-pointer group">
-                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition ${isAdminLogin ? 'bg-yellow-400 border-yellow-400' : 'border-blue-300'}`}>
-                    {isAdminLogin && <User size={12} className="text-black" />}
-                  </div>
-                  <input type="checkbox" checked={isAdminLogin} onChange={() => setIsAdminLogin(!isAdminLogin)} className="hidden" />
-                  <span className="text-sm text-blue-200 group-hover:text-white transition">Soy el Anfitrión</span>
-                </label>
-              </div>
-
+              
               {isAdminLogin && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="text-xs font-bold uppercase text-yellow-200 ml-1 flex items-center gap-1">
-                    <Lock size={10} /> PIN de Administrador
-                  </label>
-                  <input
-                    type="tel"
-                    value={adminPinInput}
-                    onChange={(e) => setAdminPinInput(e.target.value)}
-                    className="w-full bg-yellow-400/10 border border-yellow-400/30 rounded-xl px-4 py-3 text-yellow-300 placeholder-yellow-600/50 focus:outline-none focus:border-yellow-400 transition font-mono tracking-widest"
-                    placeholder="****"
-                    maxLength={4}
-                  />
-                </div>
+                <input type="tel" value={adminPinInput} onChange={(e) => setAdminPinInput(e.target.value)} className="w-full bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3 text-yellow-200 placeholder-yellow-700" placeholder="PIN Admin" maxLength={4} />
               )}
 
-              <button 
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-3 rounded-xl shadow-lg mt-2 transition transform active:scale-95 disabled:opacity-50 flex justify-center"
-              >
-                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Entrar a la Fiesta'}
+              <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl mt-2">
+                {loading ? 'Entrando...' : '¡Vamos!'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold uppercase text-blue-200 ml-1">Nombre del Evento</label>
-                <input
-                  type="text"
-                  value={createEventName}
-                  onChange={(e) => setCreateEventName(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-blue-400/50 focus:outline-none focus:border-yellow-400/50 transition"
-                  placeholder="Ej. Boda de Luis y María"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase text-blue-200 ml-1">Tu Nombre (Anfitrión)</label>
-                <input
-                  type="text"
-                  value={createHostName}
-                  onChange={(e) => setCreateHostName(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-blue-400/50 focus:outline-none focus:border-yellow-400/50 transition"
-                  placeholder="Ej. Luis"
-                />
-              </div>
-              <button 
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-purple-900 font-bold py-3 rounded-xl shadow-lg hover:shadow-yellow-500/50 transition transform active:scale-95 mt-2 flex justify-center"
-              >
-                 {loading ? <div className="w-5 h-5 border-2 border-purple-900/30 border-t-purple-900 rounded-full animate-spin" /> : 'Crear Evento Nuevo'}
+              <input type="text" value={createEventName} onChange={(e) => setCreateEventName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Nombre del Evento" />
+              <input type="text" value={createHostName} onChange={(e) => setCreateHostName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white" placeholder="Tu Nombre" />
+              <button disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl mt-2">
+                 {loading ? 'Creando...' : 'Crear Evento'}
               </button>
             </form>
           )}
@@ -302,55 +204,48 @@ const LoginScreen = ({ onJoin }) => {
   );
 };
 
-// 2. Componente de Cámara (ARREGLADO PARA QUE FUNCIONE)
-const CameraView = ({ onClose, onUpload, user }) => {
+// 2. Componente de Cámara (OPTIMIZADO PARA FOTOS)
+const CameraView = ({ onClose, onUpload }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const [stream, setStream] = useState(null);
-  const [flash, setFlash] = useState(false);
-  const [cameraError, setCameraError] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
 
   useEffect(() => {
     let activeStream = null;
-    let mounted = true;
     if (!cameraActive) return;
 
     const startCamera = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } 
+          video: { facingMode: 'environment' } 
         });
-        if (!mounted) { mediaStream.getTracks().forEach(t => t.stop()); return; }
         activeStream = mediaStream;
         setStream(mediaStream);
-        setCameraError(false);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
-          videoRef.current.play().catch(e => console.log("Autoplay blocked", e));
+          videoRef.current.play();
         }
       } catch (err) {
-        if (mounted) setCameraError(true);
+        console.warn("Cámara no disponible, usando fallback de archivo");
       }
     };
     startCamera();
     return () => {
-      mounted = false;
-      if (activeStream) activeStream.getTracks().forEach(track => track.stop());
+      if (activeStream) activeStream.getTracks().forEach(t => t.stop());
     };
   }, [cameraActive]);
 
-  // FUNCIÓN MÁGICA: Reduce el tamaño de la foto
   const processAndUpload = (source, isVideo = true) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const MAX_WIDTH = 600; // Ancho máximo seguro
+    // REDUCIR CALIDAD (Esencial para que funcione)
+    const MAX_WIDTH = 600; 
     let width = isVideo ? source.videoWidth : source.width;
     let height = isVideo ? source.videoHeight : source.height;
 
-    // Calculamos nuevas dimensiones
     if (width > MAX_WIDTH) {
       height = height * (MAX_WIDTH / width);
       width = MAX_WIDTH;
@@ -362,21 +257,24 @@ const CameraView = ({ onClose, onUpload, user }) => {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(source, 0, 0, width, height);
     
-    // Convertimos a JPG calidad 0.6 (ligero)
+    // Convertir a JPG ligero
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.6);
     onUpload(imageDataUrl);
   };
 
   const takePhoto = () => {
-    if (!videoRef.current) return;
-    setFlash(true);
-    setTimeout(() => setFlash(false), 200);
-    processAndUpload(videoRef.current, true);
+    if (videoRef.current) processAndUpload(videoRef.current, true);
   };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Bloqueamos video para que no falle
+      if(file.type.startsWith('video/')) {
+        alert("⚠️ Solo se permiten FOTOS en esta versión gratuita.");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -387,52 +285,30 @@ const CameraView = ({ onClose, onUpload, user }) => {
     }
   };
 
-  const triggerFileInput = () => fileInputRef.current.click();
-
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${flash ? 'opacity-100' : 'opacity-0'}`} />
-      
       <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
-        {cameraError ? (
-           <div className="flex flex-col items-center justify-center p-8 text-center w-full max-w-sm animate-in fade-in">
-             <div className="w-16 h-16 bg-red-900/50 rounded-full flex items-center justify-center mb-4">
-                <Video size={32} className="text-red-400" />
-             </div>
-             <h3 className="text-white text-lg font-bold mb-2">Cámara no disponible</h3>
-             <button onClick={triggerFileInput} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
-                <Camera size={20} /> Usar Galería o Cámara Nativa
-             </button>
-           </div>
-        ) : cameraActive && stream ? (
+        {cameraActive && stream ? (
           <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
         ) : (
-          <div className="flex flex-col items-center justify-center p-8 text-center w-full max-w-sm animate-in zoom-in-95 duration-300">
-             <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-blue-900/20">
-                <Aperture size={40} className="text-blue-400" />
-             </div>
-             <h3 className="text-white text-2xl font-bold mb-2">Modo Cámara</h3>
-             <div className="w-full space-y-3 mt-4">
-               <button onClick={() => setCameraActive(true)} className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 transition">
-                  <Video size={20} /> Activar Cámara en Vivo
-               </button>
-               <button onClick={triggerFileInput} className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/50 transition">
-                  <Camera size={20} /> Usar Cámara Nativa / Galería
-               </button>
-             </div>
+          <div className="text-center p-8 text-white space-y-4 w-full max-w-sm">
+            <h3 className="text-xl font-bold">Modo Cámara</h3>
+            <button onClick={() => setCameraActive(true)} className="w-full bg-white/20 p-4 rounded-xl flex items-center justify-center gap-2 font-bold">
+               <Camera size={24} /> Cámara en Vivo
+            </button>
+            <button onClick={() => fileInputRef.current.click()} className="w-full bg-blue-600 p-4 rounded-xl flex items-center justify-center gap-2 font-bold">
+               <Video size={24} /> Subir de Galería
+            </button>
+            <p className="text-xs text-gray-500 mt-4">* Solo Fotos soportadas actualmente</p>
           </div>
         )}
         <canvas ref={canvasRef} className="hidden" />
-        <div className="absolute top-4 left-4 right-4 flex justify-between items-center text-white">
-          <button onClick={onClose} className="p-2 bg-black/40 rounded-full backdrop-blur-md hover:bg-black/60 transition"><X size={24} /></button>
-        </div>
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white"><X size={24} /></button>
       </div>
 
-      {cameraActive && !cameraError && (
-        <div className="h-32 bg-black flex items-center justify-center relative flex-col gap-2">
-          <button onClick={takePhoto} disabled={!stream} className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center relative group active:scale-95 transition disabled:opacity-50">
-            <div className="w-12 h-12 bg-white rounded-full group-hover:bg-gray-200 transition" />
-          </button>
+      {cameraActive && (
+        <div className="h-32 bg-black flex items-center justify-center">
+          <button onClick={takePhoto} className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 transition active:scale-95"></button>
         </div>
       )}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
@@ -440,7 +316,7 @@ const CameraView = ({ onClose, onUpload, user }) => {
   );
 };
 
-// 3. Tarjeta de Foto (TU VERSIÓN ORIGINAL CON COMENTARIOS)
+// 3. Tarjeta de Foto (CON COMENTARIOS ARREGLADOS)
 const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment, onDeleteComment, onToggleLike }) => {
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
@@ -450,64 +326,80 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
     if (!commentText.trim()) return;
     onAddComment(post.id, commentText);
     setCommentText('');
+    setShowComments(true); // Abrir comentarios al enviar
   };
 
   const isLiked = post.likes && post.likes.includes(currentUserId);
-  const likeCount = post.likes ? post.likes.length : 0;
+  const commentsList = post.comments || []; // Seguridad si está vacío
 
   return (
-    <div className="bg-white mb-4 shadow-sm border-b border-gray-100 last:border-0">
+    <div className="bg-white mb-4 shadow-sm border-b border-gray-100 pb-2">
+      {/* Header Post */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-700 to-blue-900 flex items-center justify-center text-white text-xs font-bold shadow-md">
+          <div className="w-8 h-8 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-xs shadow">
             {post.userName.charAt(0).toUpperCase()}
           </div>
-          <span className="text-sm font-semibold text-gray-900">{post.userName}</span>
+          <span className="text-sm font-bold text-gray-900">{post.userName}</span>
         </div>
         {currentUser.role === 'host' && (
-          <button onClick={() => onDeletePost(post.id)} className="text-gray-300 hover:text-red-500 transition p-1 bg-gray-50 rounded-full hover:bg-red-50">
+          <button onClick={() => onDeletePost(post.id)} className="text-gray-300 hover:text-red-500 p-1">
             <Trash2 size={16} />
           </button>
         )}
       </div>
-      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
-        <img src={post.imageUrl} alt="Evento" className="w-full h-full object-cover" />
+
+      {/* Imagen */}
+      <div className="w-full bg-gray-100">
+        <img src={post.imageUrl} alt="Momento" className="w-full h-auto object-cover" />
       </div>
+
+      {/* Acciones y Comentarios */}
       <div className="p-3">
-        <div className="flex items-center space-x-4 mb-3">
-          <button 
-            onClick={() => onToggleLike(post.id, isLiked)}
-            className={`transition active:scale-90 transform flex items-center gap-1 ${isLiked ? 'text-red-500' : 'text-gray-800 hover:text-red-500'}`}
-          >
-            <Heart size={26} fill={isLiked ? "currentColor" : "none"} strokeWidth={isLiked ? 0 : 2} />
+        <div className="flex items-center gap-4 mb-3">
+          <button onClick={() => onToggleLike(post.id, isLiked)} className={`transition ${isLiked ? 'text-red-500' : 'text-gray-800'}`}>
+            <Heart size={26} fill={isLiked ? "currentColor" : "none"} />
           </button>
-          
-          <button onClick={() => setShowComments(!showComments)} className="text-gray-800 hover:text-blue-500 transition"><MessageCircle size={26} /></button>
+          <button onClick={() => setShowComments(!showComments)} className="text-gray-800">
+            <MessageCircle size={26} />
+          </button>
         </div>
-        
-        {likeCount > 0 && (
-          <p className="text-sm font-bold text-gray-900 mb-1">
-            {likeCount} {likeCount === 1 ? 'Me gusta' : 'Me gustas'}
-          </p>
+
+        {/* Lista de Likes */}
+        {(post.likes?.length > 0) && (
+          <p className="text-sm font-bold text-gray-900 mb-2">{post.likes.length} Me gusta</p>
         )}
 
-        <p className="text-xs text-gray-400 uppercase font-medium mb-2">{post.timestamp?.toDate ? post.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Ahora'}</p>
-        <div className="space-y-1">
-          {post.comments && post.comments.slice(showComments ? 0 : -2).map((comment, idx) => (
-            <div key={idx} className="text-sm flex justify-between group py-0.5">
-              <span><span className="font-semibold mr-2 text-blue-900">{comment.userName}</span><span className="text-gray-700">{comment.text}</span></span>
+        {/* Lista de Comentarios */}
+        <div className="space-y-1 mb-2">
+          {commentsList.slice(showComments ? 0 : -2).map((comment, idx) => (
+            <div key={idx} className="text-sm flex justify-between group">
+              <span>
+                <span className="font-bold mr-2 text-blue-900">{comment.userName}</span>
+                <span className="text-gray-700">{comment.text}</span>
+              </span>
               {currentUser.role === 'host' && (
-                <button onClick={() => onDeleteComment(post.id, comment)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition text-xs"><X size={14} /></button>
+                <button onClick={() => onDeleteComment(post.id, comment)} className="text-gray-300 hover:text-red-500"><X size={12} /></button>
               )}
             </div>
           ))}
-          {!showComments && post.comments && post.comments.length > 2 && (
-            <button onClick={() => setShowComments(true)} className="text-gray-400 text-xs mt-1 hover:text-blue-500">Ver los {post.comments.length} comentarios</button>
+          {!showComments && commentsList.length > 2 && (
+            <button onClick={() => setShowComments(true)} className="text-gray-400 text-xs mt-1">Ver los {commentsList.length} comentarios</button>
           )}
         </div>
-        <form onSubmit={handleSubmitComment} className="mt-3 flex items-center border-t border-gray-100 pt-3">
-          <input type="text" placeholder="Comentar..." className="flex-1 text-sm outline-none placeholder-gray-400 bg-transparent" value={commentText} onChange={(e) => setCommentText(e.target.value)} />
-          <button type="submit" disabled={!commentText.trim()} className="text-blue-600 font-semibold text-sm disabled:opacity-50 ml-2">Enviar</button>
+
+        {/* Input Comentario (Visible siempre) */}
+        <form onSubmit={handleSubmitComment} className="flex items-center pt-2 border-t border-gray-100">
+          <input 
+            type="text" 
+            placeholder="Añadir un comentario..." 
+            className="flex-1 text-sm outline-none bg-transparent py-1" 
+            value={commentText} 
+            onChange={(e) => setCommentText(e.target.value)} 
+          />
+          <button type="submit" disabled={!commentText.trim()} className="text-blue-600 font-bold text-sm ml-2 disabled:opacity-50">
+            Publicar
+          </button>
         </form>
       </div>
     </div>
@@ -515,14 +407,10 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
 };
 
 // --- APP PRINCIPAL ---
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      try { return saved ? JSON.parse(saved) : null; } catch (e) { return null; }
-    }
-    return null;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
   });
 
   const [firebaseUser, setFirebaseUser] = useState(null);
@@ -530,9 +418,9 @@ export default function App() {
   const [view, setView] = useState('feed');
   const [loading, setLoading] = useState(true);
 
-  // Auth Init
+  // Autenticación
   useEffect(() => {
-    signInAnonymously(auth).catch(e => console.error("Auth error", e));
+    signInAnonymously(auth).catch(e => console.error(e));
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       setLoading(false);
@@ -540,17 +428,17 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch Posts
+  // Cargar Posts
   useEffect(() => {
     if (!firebaseUser || !currentUser) return;
     const postsRef = collection(db, 'events', currentUser.eventCode, 'posts');
     const q = query(postsRef);
-    const unsubscribePosts = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      postsData.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-      setPosts(postsData);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      setPosts(data);
     });
-    return () => unsubscribePosts();
+    return () => unsubscribe();
   }, [firebaseUser, currentUser]);
 
   const handleLogin = (userData) => {
@@ -559,22 +447,20 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    if (confirm("¿Quieres salir del evento?")) {
+    if (confirm("¿Salir del evento?")) {
       setCurrentUser(null);
-      setPosts([]);
       localStorage.removeItem(STORAGE_KEY);
     }
   };
 
+  // Subir Foto
   const handleUpload = async (imageDataUrl) => {
     if (!firebaseUser || !currentUser) return;
-
-    // VERIFICACIÓN DE TAMAÑO (Seguridad extra)
-    const sizeInBytes = (imageDataUrl.length * 3) / 4;
-    const sizeInKb = sizeInBytes / 1024;
-    if (sizeInKb > 950) {
-        alert("La imagen sigue siendo demasiado grande. Intenta usar la opción 'Nativa'.");
-        return;
+    
+    // Verificación de seguridad de tamaño
+    if (imageDataUrl.length > 2000000) {
+       alert("Imagen muy grande. Intenta tomarla de nuevo.");
+       return;
     }
 
     setView('feed');
@@ -585,44 +471,39 @@ export default function App() {
         userRole: currentUser.role,
         imageUrl: imageDataUrl,
         timestamp: serverTimestamp(),
-        comments: [],
+        comments: [], // Importante inicializar vacío
         likes: []
       });
-    } catch (e) { alert("Error al subir."); }
+    } catch (e) {
+      alert("Error subiendo foto.");
+    }
   };
 
+  // COMENTAR (ARREGLADO CON ARRAYUNION)
   const handleAddComment = async (postId, text) => {
     if (!firebaseUser || !currentUser) return;
     try {
       const postRef = doc(db, 'events', currentUser.eventCode, 'posts', postId);
-      const post = posts.find(p => p.id === postId);
-      if (!post) return;
-      const newComment = { text, userName: currentUser.name, userId: firebaseUser.uid, timestamp: Date.now() };
-      await setDoc(postRef, { ...post, comments: [...(post.comments || []), newComment] }, { merge: true });
-    } catch (e) { console.error(e); }
-  };
-
-  const handleToggleLike = async (postId, isLiked) => {
-     if (!firebaseUser || !currentUser) return;
-     try {
-       const postRef = doc(db, 'events', currentUser.eventCode, 'posts', postId);
-       const post = posts.find(p => p.id === postId);
-       if (!post) return;
-       let currentLikes = post.likes || [];
-       let newLikes;
-       if (isLiked) {
-         newLikes = currentLikes.filter(uid => uid !== firebaseUser.uid);
-       } else {
-         newLikes = [...currentLikes, firebaseUser.uid];
-       }
-       await setDoc(postRef, { ...post, likes: newLikes }, { merge: true });
-     } catch (e) { console.error(e); }
+      // ArrayUnion es la clave para que no falle nunca
+      await updateDoc(postRef, {
+        comments: arrayUnion({
+          text,
+          userName: currentUser.name,
+          userId: firebaseUser.uid,
+          timestamp: Date.now()
+        })
+      });
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo enviar el comentario.");
+    }
   };
 
   const handleDeletePost = async (postId) => {
     if (currentUser.role !== 'host') return;
-    if (!confirm("¿Eliminar foto permanentemente?")) return;
-    try { await deleteDoc(doc(db, 'events', currentUser.eventCode, 'posts', postId)); } catch (e) {}
+    if (confirm("¿Borrar permanentemente?")) {
+      await deleteDoc(doc(db, 'events', currentUser.eventCode, 'posts', postId));
+    }
   };
 
   const handleDeleteComment = async (postId, commentToDelete) => {
@@ -631,51 +512,64 @@ export default function App() {
       const postRef = doc(db, 'events', currentUser.eventCode, 'posts', postId);
       const post = posts.find(p => p.id === postId);
       if (!post) return;
-      const updatedComments = post.comments.filter(c => c.timestamp !== commentToDelete.timestamp);
-      await setDoc(postRef, { ...post, comments: updatedComments }, { merge: true });
+      const newComments = post.comments.filter(c => c.timestamp !== commentToDelete.timestamp);
+      await updateDoc(postRef, { comments: newComments });
     } catch (e) {}
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-gray-900 text-blue-400">Iniciando Clebrify...</div>;
+  const handleToggleLike = async (postId, isLiked) => {
+    if (!firebaseUser) return;
+    const postRef = doc(db, 'events', currentUser.eventCode, 'posts', postId);
+    // Usamos arrayUnion y arrayRemove para likes perfectos
+    if (isLiked) {
+       await updateDoc(postRef, { likes: arrayUnion(firebaseUser.uid) }); // Pequeño hack: primero agregamos por si acaso
+       // Firebase no tiene arrayRemove simple sin valor exacto, asi que lo hacemos manual o con arrayRemove
+       const post = posts.find(p => p.id === postId);
+       const newLikes = (post.likes || []).filter(uid => uid !== firebaseUser.uid);
+       await updateDoc(postRef, { likes: newLikes });
+    } else {
+       await updateDoc(postRef, { likes: arrayUnion(firebaseUser.uid) });
+    }
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center bg-black text-white">Cargando...</div>;
   if (!currentUser) return <LoginScreen onJoin={handleLogin} />;
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50 shadow-2xl overflow-hidden relative">
+    <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50 shadow-2xl relative">
       {view === 'camera' ? (
-        <CameraView onClose={() => setView('feed')} onUpload={handleUpload} user={currentUser} />
+        <CameraView onClose={() => setView('feed')} onUpload={handleUpload} />
       ) : (
         <>
-          <header className="bg-white/95 backdrop-blur-sm border-b border-blue-100 px-4 py-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+          <header className="bg-white/95 backdrop-blur-sm border-b px-4 py-3 flex justify-between items-center sticky top-0 z-10">
             <div>
-              <h1 className="text-xl font-bold font-serif tracking-tight flex items-center text-blue-900">
-                Clebrify <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 font-sans font-bold">{currentUser.eventCode}</span>
+              <h1 className="text-xl font-bold text-blue-900 flex items-center font-serif">
+                Celebrify <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{currentUser.eventCode}</span>
               </h1>
-              {currentUser.eventName && <p className="text-xs text-gray-500 truncate max-w-[200px]">{currentUser.eventName}</p>}
             </div>
-            <div className="flex items-center space-x-3">
-               {currentUser.role === 'host' && <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full border border-yellow-200">ADMIN</span>}
-               <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition"><LogOut size={20} /></button>
+            <div className="flex items-center gap-3">
+               {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold">ADMIN</span>}
+               <button onClick={handleLogout} className="text-gray-400 hover:text-red-500"><LogOut size={20} /></button>
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto bg-gray-50 scrollbar-hide pb-20">
+          <main className="flex-1 overflow-y-auto pb-20 p-2">
             {posts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-gray-400 p-8 text-center mt-10">
-                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                  <Camera size={40} className="text-blue-200" />
+              <div className="text-center mt-20 text-gray-400 px-6">
+                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Camera size={30} />
                 </div>
-                <h3 className="text-lg font-medium text-gray-600">¡Que empiece la fiesta!</h3>
-                <p className="text-sm mt-2 text-gray-500 max-w-xs mx-auto">Toma la primera foto para inaugurar el álbum digital de {currentUser.eventName || 'este evento'}.</p>
+                <p>¡Aún no hay fotos! <br/> Sé el primero en compartir.</p>
               </div>
             ) : (
               posts.map(post => (
                 <PostCard 
                   key={post.id} 
                   post={post} 
-                  currentUser={currentUser} 
+                  currentUser={currentUser}
                   currentUserId={firebaseUser?.uid}
-                  onDeletePost={handleDeletePost} 
-                  onAddComment={handleAddComment} 
+                  onDeletePost={handleDeletePost}
+                  onAddComment={handleAddComment}
                   onDeleteComment={handleDeleteComment}
                   onToggleLike={handleToggleLike}
                 />
@@ -683,14 +577,14 @@ export default function App() {
             )}
           </main>
 
-          <nav className="bg-white border-t border-gray-200 h-16 flex justify-around items-center px-2 pb-2 safe-area-bottom z-20">
-            <button onClick={() => setView('feed')} className={`p-2 rounded-xl transition ${view === 'feed' ? 'text-blue-900' : 'text-gray-300'}`}>
-              <Home size={28} strokeWidth={view === 'feed' ? 2.5 : 2} />
+          <nav className="absolute bottom-0 w-full bg-white border-t h-16 flex justify-around items-center z-20 pb-safe">
+            <button onClick={() => setView('feed')} className={`p-2 ${view === 'feed' ? 'text-blue-600' : 'text-gray-300'}`}>
+              <Home size={28} />
             </button>
-            <button onClick={() => setView('camera')} className="bg-gradient-to-tr from-blue-900 to-black text-white p-4 rounded-full shadow-xl shadow-blue-900/40 transform -translate-y-6 hover:scale-105 transition active:scale-95 border-4 border-gray-50">
+            <button onClick={() => setView('camera')} className="bg-blue-900 text-white p-4 rounded-full -translate-y-6 shadow-lg border-4 border-gray-50 hover:scale-105 transition">
               <Camera size={28} />
             </button>
-            <button className="p-2 rounded-xl text-gray-300 hover:text-blue-900 transition"><User size={28} /></button>
+            <button className="p-2 text-gray-300"><User size={28} /></button>
           </nav>
         </>
       )}
