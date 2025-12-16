@@ -5,6 +5,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import QRCode from "react-qr-code";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -24,7 +25,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v17'; 
+const STORAGE_KEY = 'celebrify_session_v18'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -40,7 +41,7 @@ const normalizeName = (name) => name.trim().toLowerCase().replace(/\s+/g, '');
 
 // --- COMPONENTES ---
 
-// 1. Pantalla de Login / Bienvenida
+// 1. Pantalla de Login / Bienvenida (Con Autocompletado por URL)
 const LoginScreen = ({ onJoin, userUid }) => {
   const [mode, setMode] = useState('join');
   const [loading, setLoading] = useState(false);
@@ -53,6 +54,15 @@ const LoginScreen = ({ onJoin, userUid }) => {
   const [createHostName, setCreateHostName] = useState('');
   const [masterPinInput, setMasterPinInput] = useState('');
   const [createdEventData, setCreatedEventData] = useState(null);
+
+  // DETECTAR CÓDIGO EN LA URL (Para el QR)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlCode = params.get('code');
+    if (urlCode) {
+      setJoinCode(urlCode.toUpperCase());
+    }
+  }, []);
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
@@ -474,10 +484,14 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. Perfil con LISTA DE INVITADOS y CONTADOR (SOLO ADMIN)
+// 4. Perfil con LISTA DE INVITADOS, CONTADOR y QR REAL
 const ProfileView = ({ user, onLogout, posts, usersList }) => {
   const [showPin, setShowPin] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+
+  // URL base para el QR (Detecta si es localhost o producción)
+  const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?code=${user.eventCode}` : '';
 
   const copyCode = () => {
     navigator.clipboard.writeText(user.eventCode);
@@ -517,6 +531,20 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
 
   return (
     <div className="flex flex-col h-full bg-gray-50 p-6 overflow-y-auto pb-32">
+       {/* MODAL QR */}
+       {showQRModal && (
+         <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-6 animate-in fade-in">
+            <button onClick={() => setShowQRModal(false)} className="absolute top-6 right-6 text-white p-2"><X size={32}/></button>
+            <div className="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Escanea para unirte</h3>
+                <div className="border-4 border-gray-900 rounded-xl overflow-hidden p-2">
+                    <QRCode value={appUrl} size={256} />
+                </div>
+                <p className="mt-4 text-2xl font-mono font-bold text-blue-600 tracking-widest">{user.eventCode}</p>
+            </div>
+         </div>
+       )}
+
        <div className="mb-8 mt-4 text-center">
          <div className="w-24 h-24 bg-blue-900 text-white rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-4 shadow-xl">
            {user.name.charAt(0).toUpperCase()}
@@ -532,10 +560,16 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
             <QrCode size={18} className="text-gray-400"/>
             <p className="text-xs font-bold text-gray-400 uppercase">Invitar amigos</p>
          </div>
-         <p className="text-gray-500 text-sm mb-3">Comparte este código para que otros se unan:</p>
-         <div onClick={copyCode} className="bg-gray-100 p-4 rounded-xl flex justify-between items-center cursor-pointer hover:bg-gray-200 transition">
-            <span className="text-3xl font-mono font-bold text-blue-900 tracking-widest">{user.eventCode}</span>
-            <Copy size={20} className="text-gray-400" />
+         <p className="text-gray-500 text-sm mb-3">Comparte este código o muestra el QR:</p>
+         
+         <div className="flex gap-3">
+            <div onClick={copyCode} className="flex-1 bg-gray-100 p-4 rounded-xl flex justify-between items-center cursor-pointer hover:bg-gray-200 transition">
+                <span className="text-3xl font-mono font-bold text-blue-900 tracking-widest">{user.eventCode}</span>
+                <Copy size={20} className="text-gray-400" />
+            </div>
+            <button onClick={() => setShowQRModal(true)} className="bg-blue-600 text-white p-4 rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition">
+                <QrCode size={28} />
+            </button>
          </div>
        </div>
 
@@ -549,7 +583,6 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
          </div>
          <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
             {usersList.map((u, i) => {
-                // Calculamos cuántos posts tiene este usuario
                 const postCount = posts.filter(p => p.userId === u.deviceId).length;
                 
                 return (
@@ -561,7 +594,6 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
                             <span>{u.originalName} {u.role === 'host' && '👑'}</span>
                         </div>
                         
-                        {/* CONTADOR - SOLO VISIBLE SI ERES EL ANFITRIÓN */}
                         {user.role === 'host' && postCount > 0 && (
                             <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-sm">
                                 <ImageIcon size={10} className="text-gray-400"/>
