@@ -220,7 +220,7 @@ const LoginScreen = ({ onJoin, userUid }) => {
       <div className="mb-8 text-center">
         <Aperture size={60} className="mx-auto mb-2 text-yellow-400" />
         <h1 className="text-4xl font-bold tracking-tighter">Clebrify</h1>
-        <p className="text-blue-200 text-sm mt-2">Tus fiestas, en vivo.</p>
+        <p className="text-blue-200 text-sm mt-2">Tu evento, tu control.</p>
       </div>
       <div className="w-full max-w-sm bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden">
         <div className="flex border-b border-white/10">
