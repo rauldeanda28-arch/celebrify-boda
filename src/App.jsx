@@ -24,7 +24,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v13'; 
+const STORAGE_KEY = 'celebrify_session_v14'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -116,10 +116,13 @@ const LoginScreen = ({ onJoin, userUid }) => {
 
       const eventData = eventSnap.data();
       let role = 'guest';
+      let isValidAdmin = false;
 
+      // 1. VERIFICACIÓN DE PIN (Prioridad Alta)
       if (isAdminLogin) {
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) {
           role = 'host';
+          isValidAdmin = true; // Marcamos que es un admin legítimo
         } else {
           setError('PIN incorrecto. Acceso denegado.');
           setLoading(false);
@@ -127,18 +130,31 @@ const LoginScreen = ({ onJoin, userUid }) => {
         }
       }
 
+      // 2. VERIFICACIÓN DE NOMBRE (Protección de Identidad)
       const cleanName = normalizeName(joinName);
       const userRef = doc(db, 'events', code, 'users', cleanName);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
           const userData = userSnap.data();
-          if (userData.deviceId !== userUid) {
-              setError(`⚠️ El nombre "${joinName}" ya está en uso. Usa otro.`);
+          
+          // Si el ID del dispositivo coincide, todo bien.
+          if (userData.deviceId === userUid) {
+              // Pasa sin problemas
+          } 
+          // SI NO coincide, pero TIENE EL PIN DE ADMIN, le permitimos recuperar su nombre
+          else if (isValidAdmin) {
+              // Actualizamos el usuario con el nuevo dispositivo del admin
+              await updateDoc(userRef, { deviceId: userUid });
+          } 
+          // Si es un invitado normal intentando robar nombre, lo bloqueamos
+          else {
+              setError(`⚠️ El nombre "${joinName}" ya está en uso. Por favor usa otro.`);
               setLoading(false);
               return;
           }
       } else {
+          // Si no existe, lo creamos
           await setDoc(userRef, {
               originalName: joinName,
               deviceId: userUid,
@@ -432,7 +448,6 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
 
         posts.forEach((post, index) => {
             if (!post.imageUrl) return;
-            // Detectar tipo
             const isVideo = post.imageUrl.startsWith('data:video');
             const ext = isVideo ? 'mp4' : 'jpg';
             const base64Data = post.imageUrl.split(',')[1];
@@ -476,7 +491,6 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
          </div>
        </div>
 
-       {/* SECCIÓN NUEVA: LISTA DE INVITADOS */}
        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -553,7 +567,8 @@ export default function App() {
 
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [usersList, setUsersList] = useState([]); // Estado para la lista real de nombres
+  const [usersList, setUsersList] = useState([]); 
+  const [peopleCount, setPeopleCount] = useState(0);
   const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
 
@@ -578,11 +593,12 @@ export default function App() {
       setPosts(data);
     });
 
-    // Escuchar Usuarios (Y guardar la lista)
+    // Escuchar Usuarios
     const usersRef = collection(db, 'events', currentUser.eventCode, 'users');
     const unsubUsers = onSnapshot(usersRef, (snapshot) => {
        const users = snapshot.docs.map(doc => doc.data());
-       setUsersList(users); // Guardamos la lista completa
+       setUsersList(users);
+       setPeopleCount(snapshot.size);
     });
 
     return () => {
@@ -706,7 +722,7 @@ export default function App() {
             <div className="flex items-center gap-3">
                <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
                   <Users size={12} className="text-gray-500"/>
-                  <span className="text-xs font-bold text-gray-600">{usersList.length}</span>
+                  <span className="text-xs font-bold text-gray-600">{peopleCount}</span>
                </div>
                {currentUser.role === 'host' && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold border border-yellow-200">ADMIN</span>}
             </div>
