@@ -24,7 +24,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v16'; // Incrementamos versión por el cambio de cámara
+const STORAGE_KEY = 'celebrify_session_v17'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -136,9 +136,8 @@ const LoginScreen = ({ onJoin, userUid }) => {
       if (userSnap.exists()) {
           const userData = userSnap.data();
           if (userData.deviceId === userUid) {
-              // Mismo dispositivo, OK
+              // OK
           } else if (isValidAdmin) {
-              // Admin recuperando cuenta, OK
               await updateDoc(userRef, { deviceId: userUid });
           } else {
               setError(`⚠️ El nombre "${joinName}" ya está en uso. Por favor usa otro.`);
@@ -259,9 +258,10 @@ const LoginScreen = ({ onJoin, userUid }) => {
   );
 };
 
-// 2. Componente de Cámara (CON DOBLE BOTÓN PARA ANDROID)
+// 2. Componente de Cámara (3 BOTONES: FOTO, VIDEO, GALERÍA)
 const CameraView = ({ onClose, onUpload }) => {
   const cameraInputRef = useRef(null);
+  const videoInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -293,7 +293,7 @@ const CameraView = ({ onClose, onUpload }) => {
     if (file) {
       const isVideo = file.type.startsWith('video/');
       if (isVideo && file.size > 2500000) { 
-          alert("⚠️ El video es muy pesado. Intenta uno más corto.");
+          alert("⚠️ El video es muy pesado. Intenta uno más corto (3-5 seg).");
           return;
       }
       const reader = new FileReader();
@@ -323,23 +323,32 @@ const CameraView = ({ onClose, onUpload }) => {
           
           <div>
             <h2 className="text-white text-2xl font-bold mb-2">Captura el Momento</h2>
-            <p className="text-gray-400 text-sm">Elige cómo quieres compartir.</p>
+            <p className="text-gray-400 text-sm">Elige qué quieres subir:</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 w-full">
-            {/* BOTÓN 1: CÁMARA DIRECTA */}
+          <div className="grid grid-cols-2 gap-3 w-full">
+            {/* BOTÓN 1: CÁMARA FOTO */}
             <button 
                 onClick={() => cameraInputRef.current.click()} 
-                className="w-full bg-white text-blue-900 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 text-lg shadow-xl active:scale-95 transition"
+                className="bg-blue-600 text-white font-bold py-4 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition"
             >
-                <Camera size={24} />
-                Tomar Foto
+                <Camera size={28} />
+                <span className="text-sm">Foto</span>
             </button>
 
-            {/* BOTÓN 2: GALERÍA */}
+            {/* BOTÓN 2: CÁMARA VIDEO */}
+            <button 
+                onClick={() => videoInputRef.current.click()} 
+                className="bg-red-500 text-white font-bold py-4 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition"
+            >
+                <Video size={28} />
+                <span className="text-sm">Video</span>
+            </button>
+
+            {/* BOTÓN 3: GALERÍA (ANCHO COMPLETO) */}
             <button 
                 onClick={() => galleryInputRef.current.click()} 
-                className="w-full bg-white/10 border border-white/20 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 text-lg hover:bg-white/20 active:scale-95 transition"
+                className="col-span-2 bg-white/10 border border-white/20 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 text-lg hover:bg-white/20 active:scale-95 transition"
             >
                 <Upload size={24} />
                 Subir de Galería
@@ -349,7 +358,7 @@ const CameraView = ({ onClose, onUpload }) => {
 
        <canvas ref={canvasRef} className="hidden" />
        
-       {/* INPUT 1: FUERZA LA CÁMARA (capture="environment") */}
+       {/* INPUT 1: FOTO (capture="environment") */}
        <input 
           ref={cameraInputRef} 
           type="file" 
@@ -359,7 +368,17 @@ const CameraView = ({ onClose, onUpload }) => {
           onChange={handleFileSelect} 
        />
 
-       {/* INPUT 2: ABRE GALERÍA */}
+       {/* INPUT 2: VIDEO (capture="environment") */}
+       <input 
+          ref={videoInputRef} 
+          type="file" 
+          accept="video/*" 
+          capture="environment" 
+          className="hidden" 
+          onChange={handleFileSelect} 
+       />
+
+       {/* INPUT 3: GALERÍA (AMBOS) */}
        <input 
           ref={galleryInputRef} 
           type="file" 
