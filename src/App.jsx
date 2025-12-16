@@ -24,7 +24,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v15'; 
+const STORAGE_KEY = 'celebrify_session_v16'; // Incrementamos versión por el cambio de cámara
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -259,9 +259,10 @@ const LoginScreen = ({ onJoin, userUid }) => {
   );
 };
 
-// 2. Componente de Cámara
+// 2. Componente de Cámara (CON DOBLE BOTÓN PARA ANDROID)
 const CameraView = ({ onClose, onUpload }) => {
-  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const canvasRef = useRef(null);
 
   const processAndUpload = (source, isVideo) => {
@@ -310,25 +311,62 @@ const CameraView = ({ onClose, onUpload }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6">
-       <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full text-white"><X size={24} /></button>
-       <div className="w-full max-w-sm text-center">
-          <div className="mb-8 flex justify-center">
-             <div className="w-24 h-24 bg-blue-900/50 rounded-full flex items-center justify-center border-2 border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
-                <Camera size={48} className="text-white" />
+    <div className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6 animate-in fade-in duration-200">
+       <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition"><X size={24} /></button>
+       
+       <div className="w-full max-w-sm text-center space-y-6">
+          <div className="flex justify-center mb-4">
+             <div className="w-20 h-20 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30 animate-pulse">
+                <Camera size={40} className="text-white" />
              </div>
           </div>
-          <h2 className="text-white text-2xl font-bold mb-2">Nuevo Momento</h2>
-          <p className="text-gray-400 mb-8 text-sm">Comparte una foto o un video corto.</p>
-          <button 
-            onClick={() => fileInputRef.current.click()} 
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 text-lg shadow-xl transition transform active:scale-95"
-          >
-             <Upload size={24} /> CÁMARA
-          </button>
+          
+          <div>
+            <h2 className="text-white text-2xl font-bold mb-2">Captura el Momento</h2>
+            <p className="text-gray-400 text-sm">Elige cómo quieres compartir.</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 w-full">
+            {/* BOTÓN 1: CÁMARA DIRECTA */}
+            <button 
+                onClick={() => cameraInputRef.current.click()} 
+                className="w-full bg-white text-blue-900 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 text-lg shadow-xl active:scale-95 transition"
+            >
+                <Camera size={24} />
+                Tomar Foto
+            </button>
+
+            {/* BOTÓN 2: GALERÍA */}
+            <button 
+                onClick={() => galleryInputRef.current.click()} 
+                className="w-full bg-white/10 border border-white/20 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 text-lg hover:bg-white/20 active:scale-95 transition"
+            >
+                <Upload size={24} />
+                Subir de Galería
+            </button>
+          </div>
        </div>
+
        <canvas ref={canvasRef} className="hidden" />
-       <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
+       
+       {/* INPUT 1: FUERZA LA CÁMARA (capture="environment") */}
+       <input 
+          ref={cameraInputRef} 
+          type="file" 
+          accept="image/*" 
+          capture="environment" 
+          className="hidden" 
+          onChange={handleFileSelect} 
+       />
+
+       {/* INPUT 2: ABRE GALERÍA */}
+       <input 
+          ref={galleryInputRef} 
+          type="file" 
+          accept="image/*,video/*" 
+          className="hidden" 
+          onChange={handleFileSelect} 
+       />
     </div>
   );
 };
