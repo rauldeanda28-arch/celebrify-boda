@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, Users, Download, Loader } from 'lucide-react';
+import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, Users, Download, Loader, Image as ImageIcon } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -24,7 +24,7 @@ const CREATOR_PIN = "777777"; // <--- PARA CLIENTES
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_session_v14'; 
+const STORAGE_KEY = 'celebrify_session_v15'; 
 
 // --- UTILIDADES ---
 const generateCode = (length) => {
@@ -118,11 +118,10 @@ const LoginScreen = ({ onJoin, userUid }) => {
       let role = 'guest';
       let isValidAdmin = false;
 
-      // 1. VERIFICACIÓN DE PIN (Prioridad Alta)
       if (isAdminLogin) {
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) {
           role = 'host';
-          isValidAdmin = true; // Marcamos que es un admin legítimo
+          isValidAdmin = true;
         } else {
           setError('PIN incorrecto. Acceso denegado.');
           setLoading(false);
@@ -130,31 +129,23 @@ const LoginScreen = ({ onJoin, userUid }) => {
         }
       }
 
-      // 2. VERIFICACIÓN DE NOMBRE (Protección de Identidad)
       const cleanName = normalizeName(joinName);
       const userRef = doc(db, 'events', code, 'users', cleanName);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
           const userData = userSnap.data();
-          
-          // Si el ID del dispositivo coincide, todo bien.
           if (userData.deviceId === userUid) {
-              // Pasa sin problemas
-          } 
-          // SI NO coincide, pero TIENE EL PIN DE ADMIN, le permitimos recuperar su nombre
-          else if (isValidAdmin) {
-              // Actualizamos el usuario con el nuevo dispositivo del admin
+              // Mismo dispositivo, OK
+          } else if (isValidAdmin) {
+              // Admin recuperando cuenta, OK
               await updateDoc(userRef, { deviceId: userUid });
-          } 
-          // Si es un invitado normal intentando robar nombre, lo bloqueamos
-          else {
+          } else {
               setError(`⚠️ El nombre "${joinName}" ya está en uso. Por favor usa otro.`);
               setLoading(false);
               return;
           }
       } else {
-          // Si no existe, lo creamos
           await setDoc(userRef, {
               originalName: joinName,
               deviceId: userUid,
@@ -426,7 +417,7 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// 4. Perfil con LISTA DE INVITADOS
+// 4. Perfil con LISTA DE INVITADOS y CONTADOR (SOLO ADMIN)
 const ProfileView = ({ user, onLogout, posts, usersList }) => {
   const [showPin, setShowPin] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -491,6 +482,7 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
          </div>
        </div>
 
+       {/* SECCIÓN LISTA DE INVITADOS CON CONTADORES (Lógica especial para Admin) */}
        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -498,16 +490,34 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
                 <p className="text-xs font-bold text-blue-600 uppercase">Invitados ({usersList.length})</p>
             </div>
          </div>
-         <div className="max-h-40 overflow-y-auto space-y-2">
-            {usersList.map((u, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 p-2 rounded-lg">
-                    <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
-                        {u.originalName.charAt(0).toUpperCase()}
+         <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            {usersList.map((u, i) => {
+                // Calculamos cuántos posts tiene este usuario
+                const postCount = posts.filter(p => p.userId === u.deviceId).length;
+                
+                return (
+                    <div key={i} className="flex items-center justify-between text-sm text-gray-700 bg-gray-50 p-2 rounded-lg">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                                {u.originalName.charAt(0).toUpperCase()}
+                            </div>
+                            <span>{u.originalName} {u.role === 'host' && '👑'}</span>
+                        </div>
+                        
+                        {/* CONTADOR - SOLO VISIBLE SI ERES EL ANFITRIÓN */}
+                        {user.role === 'host' && postCount > 0 && (
+                            <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-sm">
+                                <ImageIcon size={10} className="text-gray-400"/>
+                                <span className="text-xs font-bold text-gray-600">{postCount}</span>
+                            </div>
+                        )}
                     </div>
-                    {u.originalName} {u.role === 'host' && '👑'}
-                </div>
-            ))}
+                );
+            })}
          </div>
+         {user.role !== 'host' && usersList.length > 5 && (
+             <p className="text-[10px] text-gray-400 text-center mt-2">Desliza para ver más</p>
+         )}
        </div>
 
        {user.role === 'host' && (
@@ -552,7 +562,7 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
          <button onClick={onLogout} className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition">
            <LogOut size={20} /> Cerrar Sesión
          </button>
-         <p className="text-center text-[10px] text-gray-300 mt-4">Clebrify v1.0</p>
+         <p className="text-center text-[10px] text-gray-300 mt-4">Tu evento, tu control.</p>
        </div>
     </div>
   );
@@ -568,7 +578,7 @@ export default function App() {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [usersList, setUsersList] = useState([]); 
-  const [peopleCount, setPeopleCount] = useState(0);
+  const [peopleCount, setPeopleCount] = useState(0); 
   const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
 
@@ -598,7 +608,7 @@ export default function App() {
     const unsubUsers = onSnapshot(usersRef, (snapshot) => {
        const users = snapshot.docs.map(doc => doc.data());
        setUsersList(users);
-       setPeopleCount(snapshot.size);
+       setPeopleCount(snapshot.size); 
     });
 
     return () => {
