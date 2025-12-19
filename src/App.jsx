@@ -25,7 +25,7 @@ const CREATOR_PIN = "777777";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_christmas_final'; 
+const STORAGE_KEY = 'celebrify_christmas_final_v4_1'; 
 
 // --- ESTILOS ---
 const GlobalStyles = () => (
@@ -302,7 +302,9 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
           </div>
           <span className="text-sm font-bold text-gray-100">{post.userName}</span>
         </div>
-        {currentUser.role === 'host' && <button onClick={() => onDeletePost(post.id)} className="text-gray-500 hover:text-red-400 p-2"><Trash2 size={18} /></button>}
+        {currentUser.role === 'host' && (
+          <button onClick={() => onDeletePost(post.id)} className="text-gray-500 hover:text-red-400 p-2"><Trash2 size={18} /></button>
+        )}
       </div>
       
       <div className="w-full bg-black/50">
@@ -339,33 +341,118 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
+// --- PERFIL CORREGIDO: VUELVEN LA CORONA Y EL CONTADOR ---
 const ProfileView = ({ user, onLogout, posts, usersList }) => {
   const [showPin, setShowPin] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?code=${user.eventCode}` : '';
+  const copyCode = () => { navigator.clipboard.writeText(user.eventCode); alert("¡Código copiado!"); };
+
   const handleDownloadAll = async () => { if (posts.length === 0) { alert("No hay fotos."); return; } setIsDownloading(true); try { const zip = new JSZip(); const folder = zip.folder(`celebrify_${user.eventCode}`); posts.forEach((post, index) => { if (!post.imageUrl) return; const isVideo = post.imageUrl.startsWith('data:video'); const ext = isVideo ? 'mp4' : 'jpg'; const base64Data = post.imageUrl.split(',')[1]; if (base64Data) folder.file(`momento_${index + 1}_${post.userName}.${ext}`, base64Data, {base64: true}); }); const content = await zip.generateAsync({type: "blob"}); saveAs(content, `celebrify_${user.eventCode}_album.zip`); } catch (e) { alert("Error."); } finally { setIsDownloading(false); } };
 
   return (
-    <div className="flex flex-col h-full p-6 overflow-y-auto pb-32">
-       <div className="mb-8 mt-4 text-center">
-         <div className="w-24 h-24 bg-red-800 rounded-full flex items-center justify-center text-4xl font-serif font-bold mx-auto mb-4 border-2 border-yellow-500/50">{user.name.charAt(0).toUpperCase()}</div>
-         <h2 className="text-2xl font-bold font-serif">{user.name}</h2>
-         <span className="bg-white/10 px-3 py-1 rounded-full text-xs mt-2 inline-block text-gray-300">{user.role === 'host' ? 'ANFITRIÓN' : 'INVITADO'}</span>
-       </div>
-       <div className="glass-panel rounded-2xl p-5 mb-4 flex items-center justify-between" onClick={() => setShowQRModal(!showQRModal)}>
-          <div className="flex items-center gap-3"><QrCode className="text-yellow-400"/><span className="font-bold text-sm">Ver Código QR</span></div>
-          <span className="font-mono bg-black/30 px-2 py-1 rounded text-yellow-400">{user.eventCode}</span>
-       </div>
-       <div className="glass-panel rounded-2xl p-5 mb-4">
-         <div className="flex items-center gap-2 mb-3"><Users size={18} className="text-green-400"/><span className="font-bold text-sm">Invitados ({usersList.length})</span></div>
-         <div className="max-h-40 overflow-y-auto space-y-2 text-sm text-gray-400">
-            {usersList.map((u, i) => <div key={i} className="flex gap-2"><span>•</span><span>{u.originalName}</span></div>)}
+    <div className="flex flex-col h-full p-6 overflow-y-auto pb-32 relative relative z-10">
+       <SnowOverlay />
+       {showQRModal && (
+         <div className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6 animate-in fade-in">
+            <button onClick={() => setShowQRModal(false)} className="absolute top-6 right-6 text-white p-3 bg-white/10 rounded-full"><X size={24}/></button>
+            <div className="bg-white p-8 rounded-3xl shadow-[0_0_50px_rgba(255,255,255,0.2)] flex flex-col items-center">
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 font-serif">Escanea para unirte</h3>
+                <div className="border-2 border-gray-100 rounded-xl overflow-hidden">
+                    <QRCode value={appUrl} size={256} />
+                </div>
+                <p className="mt-6 text-3xl font-mono font-bold text-slate-900 tracking-[0.2em]">{user.eventCode}</p>
+            </div>
+         </div>
+       )}
+
+       <div className="mb-10 mt-6 text-center z-10">
+         <div className="w-28 h-28 bg-gradient-to-br from-red-700 to-red-900 border-2 border-yellow-400/30 text-white rounded-full flex items-center justify-center text-5xl font-serif font-bold mx-auto mb-4 shadow-[0_0_30px_rgba(220,38,38,0.3)]">
+           {user.name.charAt(0).toUpperCase()}
+         </div>
+         <h2 className="text-3xl font-bold text-white font-serif">{user.name}</h2>
+         <div className="flex justify-center mt-3">
+            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${user.role === 'host' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' : 'bg-white/10 text-gray-300 border border-white/20'}`}>
+                {user.role === 'host' ? 'Anfitrión' : 'Invitado'}
+            </span>
          </div>
        </div>
+
+       <div className="glass-panel rounded-3xl p-6 mb-6 z-10">
+         <div className="flex items-center gap-2 mb-4">
+            <QrCode size={18} className="text-yellow-400"/>
+            <p className="text-xs font-bold text-yellow-400 uppercase tracking-widest">Invitar amigos</p>
+         </div>
+         <div className="flex gap-3">
+            <div onClick={copyCode} className="flex-1 bg-black/30 border border-white/10 p-4 rounded-xl flex justify-between items-center cursor-pointer hover:bg-white/5 transition group">
+                <span className="text-3xl font-mono font-bold text-white tracking-widest group-hover:text-yellow-400 transition">{user.eventCode}</span>
+                <Copy size={20} className="text-gray-500 group-hover:text-white" />
+            </div>
+            <button onClick={() => setShowQRModal(true)} className="bg-white text-black p-4 rounded-xl flex items-center justify-center hover:bg-gray-200 transition shadow-lg shadow-white/10">
+                <QrCode size={28} />
+            </button>
+         </div>
+       </div>
+
+       <div className="glass-panel rounded-3xl p-6 mb-6 z-10">
+         <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+                <Users size={18} className="text-green-400"/>
+                <p className="text-xs font-bold text-green-400 uppercase tracking-widest">Lista de Invitados ({usersList.length})</p>
+            </div>
+         </div>
+         {/* LISTA RESTAURADA CON DETALLES */}
+         <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            {usersList.map((u, i) => {
+                const postCount = posts.filter(p => p.userId === u.deviceId).length;
+                return (
+                    <div key={i} className="flex items-center justify-between text-sm text-gray-300 bg-white/5 p-3 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                                {u.originalName.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-medium">{u.originalName} {u.role === 'host' && '👑'}</span>
+                        </div>
+                        {postCount > 0 && (
+                            <div className="flex items-center gap-1 bg-green-500/20 px-2 py-1 rounded-lg border border-green-500/30">
+                                <ImageIcon size={10} className="text-green-400"/>
+                                <span className="text-xs font-bold text-green-300">{postCount}</span>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+         </div>
+       </div>
+
        {user.role === 'host' && (
-         <button onClick={handleDownloadAll} disabled={isDownloading} className="w-full bg-green-900/40 border border-green-500/30 text-green-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 mb-4">{isDownloading ? 'Descargando...' : 'Descargar Álbum'}</button>
+         <div className="z-10 relative">
+             <button onClick={handleDownloadAll} disabled={isDownloading} className="w-full bg-green-900/40 border border-green-500/30 text-green-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 mb-4">{isDownloading ? 'Descargando...' : 'Descargar Álbum'}</button>
+             {user.adminPin && (
+                <div className="bg-red-900/20 rounded-2xl p-6 border border-red-500/20 mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Lock size={18} className="text-red-400"/>
+                        <p className="text-xs font-bold text-red-400 uppercase tracking-widest">Tu PIN Maestro</p>
+                    </div>
+                    <div className="bg-black/40 p-4 rounded-xl flex justify-between items-center border border-red-500/10">
+                        <span className="text-xl font-mono font-bold text-red-100 tracking-[0.3em]">{showPin ? user.adminPin : '••••'}</span>
+                        <button onClick={() => setShowPin(!showPin)} className="text-red-500/50 hover:text-red-400">{showPin ? <EyeOff size={20} /> : <Eye size={20} />}</button>
+                    </div>
+                </div>
+             )}
+         </div>
        )}
-       <button onClick={onLogout} className="w-full bg-red-900/30 border border-red-500/30 text-red-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 mt-auto"><LogOut size={18} /> Salir</button>
+
+       <div className="mt-6 mb-10 z-10 relative">
+         <button onClick={onLogout} className="w-full bg-white/5 border border-red-500/20 text-red-400 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-500/10 transition relative z-10">
+           <LogOut size={20} /> Cerrar Sesión
+         </button>
+         <div className="text-center mt-6 opacity-40">
+            <Aperture size={20} className="mx-auto mb-2" />
+            <p className="text-[10px] uppercase tracking-widest">Clebrify Holiday v1.0</p>
+         </div>
+       </div>
     </div>
   );
 };
