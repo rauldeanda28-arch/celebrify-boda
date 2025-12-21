@@ -11,6 +11,8 @@ import {
   getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, 
   doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove 
 } from 'firebase/firestore';
+// 👇 NUEVO: Importamos las funciones de Storage
+import { getStorage, ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -21,7 +23,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDOPQdyUtsIcougnXwhaehhw3fs4gmAWv0",
   authDomain: "celebrify-e5de2.firebaseapp.com",
   projectId: "celebrify-e5de2",
-  storageBucket: "celebrify-e5de2.firebasestorage.app",
+  storageBucket: "celebrify-e5de2.firebasestorage.app", // ✅ Ahora sí se usará esto
   messagingSenderId: "486495542360",
   appId: "1:486495542360:web:8507dd9206611ccfa3fe2d"
 };
@@ -29,12 +31,13 @@ const firebaseConfig = {
 // --- SEGURIDAD ---
 const MASTER_PIN = "123456";  
 const CREATOR_PIN = "777777"; 
-const STORAGE_KEY = 'celebrify_christmas_final_v4_1'; 
+const STORAGE_KEY = 'celebrify_christmas_final_v4_2'; // Subí versión para limpiar caché vieja
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app); // 👇 Inicializamos Storage
 
 // --- ESTILOS GLOBALES ---
 const GlobalStyles = () => (
@@ -263,7 +266,7 @@ const LoginScreen = ({ onJoin, userUid }) => {
       {/* FOOTER DE CONTACTO EN LOGIN */}
       <div className="absolute bottom-8 z-10 text-center">
         <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">
-          Powered by Clebrify
+          Powered by Celebrify
         </p>
         <a 
           href="mailto:contacto@clebrify.com" 
@@ -277,33 +280,43 @@ const LoginScreen = ({ onJoin, userUid }) => {
   );
 };
 
+// --- COMPONENTE CÁMARA MEJORADO PARA VIDEOS ---
 const CameraView = ({ onClose, onUpload }) => {
   const cameraInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const canvasRef = useRef(null);
 
-  const processAndUpload = (source, isVideo) => {
-    if (isVideo) { onUpload(source); return; }
+  // Procesa imágenes para comprimirlas un poco
+  const processImage = (source) => {
     const canvas = canvasRef.current; if (!canvas) return;
     const MAX_WIDTH = 1080;
     let width = source.width; let height = source.height;
     if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
     canvas.width = width; canvas.height = height;
     const ctx = canvas.getContext('2d'); ctx.drawImage(source, 0, 0, width, height);
-    onUpload(canvas.toDataURL('image/jpeg', 0.85));
+    // Devuelve string base64
+    onUpload({ type: 'image', data: canvas.toDataURL('image/jpeg', 0.85) });
   };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.type.startsWith('video/') && file.size > 25000000) { alert("⚠️ Video muy pesado."); return; }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (file.type.startsWith('video/')) { processAndUpload(event.target.result, true); } 
-        else { const img = new Image(); img.onload = () => processAndUpload(img, false); img.src = event.target.result; }
-      };
-      reader.readAsDataURL(file);
+      // 👇 AUMENTÉ LÍMITE A 100MB Y PASO EL ARCHIVO DIRECTO
+      if (file.type.startsWith('video/')) {
+        if (file.size > 100000000) { alert("⚠️ Video muy pesado (Max 100MB)."); return; }
+        // Para video, pasamos el objeto File directo (no base64) para ahorrar memoria
+        onUpload({ type: 'video', data: file });
+      } else {
+        // Para imagen, usamos FileReader para dibujarla en Canvas y redimensionar
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image(); 
+          img.onload = () => processImage(img); 
+          img.src = event.target.result; 
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -332,7 +345,15 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   const [showComments, setShowComments] = useState(false);
   const handleSubmitComment = (e) => { e.preventDefault(); if (!commentText.trim()) return; onAddComment(post.id, commentText); setCommentText(''); setShowComments(true); };
   const isLiked = post.likes && post.likes.includes(currentUserId);
-  const isVideo = post.imageUrl && post.imageUrl.startsWith('data:video');
+  
+  // Detecta si es video revisando si el URL contiene tokens de firebase storage o data:video
+  // O simplemente si el tipo de archivo se guardó como video (opcional), pero por URL suele bastar
+  const isVideo = post.imageUrl?.includes('firebasestorage') ? post.imageUrl.includes('video') || post.contentType?.startsWith('video') : post.imageUrl?.startsWith('data:video');
+
+  // Helper para saber si es video basado en extensión o contenido (simple check)
+  const looksLikeVideo = (url) => {
+     return url?.includes('.mp4') || url?.includes('video') || url?.startsWith('data:video');
+  }
 
   return (
     <div className="glass-card mb-8 rounded-3xl overflow-hidden shadow-xl border border-white/5">
@@ -349,7 +370,11 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
       </div>
       
       <div className="w-full bg-black/50">
-        {isVideo ? ( <video controls className="w-full h-auto max-h-[500px]" src={post.imageUrl} /> ) : ( <img src={post.imageUrl} alt="Momento" className="w-full h-auto object-cover" /> )}
+        {looksLikeVideo(post.imageUrl) ? ( 
+             <video controls playsInline className="w-full h-auto max-h-[500px]" src={post.imageUrl} /> 
+        ) : ( 
+             <img src={post.imageUrl} alt="Momento" className="w-full h-auto object-cover" /> 
+        )}
       </div>
 
       <div className="p-5 flex flex-col gap-4">
@@ -395,16 +420,44 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
     try { 
       const zip = new JSZip(); 
       const folder = zip.folder(`celebrify_${user.eventCode}`); 
-      posts.forEach((post, index) => { 
-        if (!post.imageUrl) return; 
-        const isVideo = post.imageUrl.startsWith('data:video'); 
-        const ext = isVideo ? 'mp4' : 'jpg'; 
-        const base64Data = post.imageUrl.split(',')[1]; 
-        if (base64Data) folder.file(`momento_${index + 1}_${post.userName}.${ext}`, base64Data, {base64: true}); 
-      }); 
+      
+      // Promesas para descargar cada archivo
+      const downloadPromises = posts.map(async (post, index) => {
+          if (!post.imageUrl) return;
+          
+          try {
+             // Si es URL de Storage, necesitamos hacer fetch
+             let data;
+             let ext = 'jpg';
+
+             if (post.imageUrl.startsWith('http')) {
+                 const response = await fetch(post.imageUrl);
+                 const blob = await response.blob();
+                 data = blob;
+                 if (post.imageUrl.includes('video') || post.imageUrl.includes('.mp4')) ext = 'mp4';
+             } else {
+                 // Es base64 antigua
+                 const isVideo = post.imageUrl.startsWith('data:video');
+                 ext = isVideo ? 'mp4' : 'jpg';
+                 data = post.imageUrl.split(',')[1];
+             }
+
+             const filename = `momento_${index + 1}_${post.userName}.${ext}`;
+             if (post.imageUrl.startsWith('http')) {
+                 folder.file(filename, data);
+             } else {
+                 folder.file(filename, data, {base64: true});
+             }
+          } catch (err) {
+              console.error("Error descargando uno:", err);
+          }
+      });
+
+      await Promise.all(downloadPromises);
+
       const content = await zip.generateAsync({type: "blob"}); 
       saveAs(content, `celebrify_${user.eventCode}_album.zip`); 
-    } catch (e) { alert("Error."); } finally { setIsDownloading(false); } 
+    } catch (e) { alert("Error al generar ZIP."); console.error(e); } finally { setIsDownloading(false); } 
   };
 
   return (
@@ -529,6 +582,7 @@ export default function App() {
   const [peopleCount, setPeopleCount] = useState(0); 
   const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
+  const [uploadingStatus, setUploadingStatus] = useState(false); // Estado para mostrar spinner al subir
 
   useEffect(() => { 
     signInAnonymously(auth)
@@ -559,17 +613,54 @@ export default function App() {
     }
   };
 
-  const handleUpload = async (url) => {
-    setView('feed');
-    await addDoc(collection(db, 'events', currentUser.eventCode, 'posts'), { 
-      userId: firebaseUser.uid, 
-      userName: currentUser.name, 
-      userRole: currentUser.role, 
-      imageUrl: url, 
-      timestamp: serverTimestamp(), 
-      comments: [], 
-      likes: [] 
-    });
+  // 👇 LÓGICA DE SUBIDA CORREGIDA: Storage primero, luego Firestore
+  const handleUpload = async (uploadObject) => {
+    // uploadObject trae { type: 'image'|'video', data: Blob|String }
+    setUploadingStatus(true);
+    setView('feed'); // Regresamos al feed y mostramos carga
+    
+    try {
+        const timestamp = Date.now();
+        const type = uploadObject.type;
+        let downloadUrl = '';
+        
+        // 1. Crear referencia al archivo en Storage
+        // Videos: 'events/CODIGO/videos/timestamp.mp4'
+        // Fotos: 'events/CODIGO/images/timestamp.jpg'
+        const folder = type === 'video' ? 'videos' : 'images';
+        const ext = type === 'video' ? 'mp4' : 'jpg';
+        const fileName = `${timestamp}_${Math.floor(Math.random()*1000)}.${ext}`;
+        const storageRef = ref(storage, `events/${currentUser.eventCode}/${folder}/${fileName}`);
+
+        // 2. Subir el archivo
+        if (type === 'video') {
+            // Subida de Blob/File (Eficiente)
+            const snapshot = await uploadBytes(storageRef, uploadObject.data);
+            downloadUrl = await getDownloadURL(snapshot.ref);
+        } else {
+            // Subida de String Base64 (Imagen)
+            const snapshot = await uploadString(storageRef, uploadObject.data, 'data_url');
+            downloadUrl = await getDownloadURL(snapshot.ref);
+        }
+
+        // 3. Guardar referencia en Firestore
+        await addDoc(collection(db, 'events', currentUser.eventCode, 'posts'), { 
+          userId: firebaseUser.uid, 
+          userName: currentUser.name, 
+          userRole: currentUser.role, 
+          imageUrl: downloadUrl, // Ahora es una URL corta de Google, no el archivo gigante
+          contentType: type,
+          timestamp: serverTimestamp(), 
+          comments: [], 
+          likes: [] 
+        });
+
+    } catch (error) {
+        console.error("Error subiendo:", error);
+        alert("Error al subir. Intenta de nuevo.");
+    } finally {
+        setUploadingStatus(false);
+    }
   };
 
   const handleAddComment = async (pid, txt) => { 
@@ -588,7 +679,6 @@ export default function App() {
     if(p) await updateDoc(r, { comments: p.comments.filter(x=>x.timestamp !== c.timestamp) }); 
   };
 
-  // --- LÓGICA DE LIKES CORREGIDA (DAR Y QUITAR) ---
   const onToggleLike = async (pid, isLiked) => { 
     const r = doc(db, 'events', currentUser.eventCode, 'posts', pid); 
     await updateDoc(r, { 
@@ -604,6 +694,15 @@ export default function App() {
     <>
     <GlobalStyles />
     <div className="flex flex-col h-screen max-w-md mx-auto bg-[#051F15] shadow-2xl relative overflow-hidden">
+      {/* Overlay de carga cuando se está subiendo un archivo */}
+      {uploadingStatus && (
+          <div className="absolute inset-0 bg-black/80 z-[60] flex flex-col items-center justify-center text-white">
+              <Loader className="animate-spin mb-4" size={40} />
+              <p className="font-bold">Subiendo momento...</p>
+              <p className="text-xs text-gray-400 mt-2">Por favor no cierres la app</p>
+          </div>
+      )}
+
       {view === 'camera' ? <CameraView onClose={() => setView('feed')} onUpload={handleUpload} /> : view === 'profile' ? (
         <>
            <header className="bg-[#051F15]/90 backdrop-blur-md px-6 py-4 flex items-center border-b border-white/5">
