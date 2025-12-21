@@ -259,6 +259,20 @@ const LoginScreen = ({ onJoin, userUid }) => {
           )}
         </div>
       </div>
+      
+      {/* FOOTER DE CONTACTO EN LOGIN */}
+      <div className="absolute bottom-8 z-10 text-center">
+        <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">
+          Powered by Clebrify
+        </p>
+        <a 
+          href="mailto:contacto@clebrify.com" 
+          className="text-xs text-white/40 font-medium hover:text-white transition-colors border-b border-transparent hover:border-white/40 pb-0.5"
+        >
+          contacto@clebrify.com
+        </a>
+      </div>
+      
     </div>
   );
 };
@@ -394,7 +408,7 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
   };
 
   return (
-    // AQUÍ ESTÁ EL CAMBIO CLAVE: Cambié pb-32 a pb-44 para que el contenido no se oculte detrás del menú
+    // Espacio inferior (pb-44) aumentado para que no se oculte tras el dock
     <div className="flex flex-col h-full p-6 overflow-y-auto pb-44 relative z-10">
        <SnowOverlay />
        {showQRModal && (
@@ -491,7 +505,7 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
            <LogOut size={20} /> Cerrar Sesión
          </button>
          
-         {/* --- SECCIÓN DEL LINK DE CORREO (Ahora visible gracias al padding extra) --- */}
+         {/* --- FOOTER DE CONTACTO EN PERFIL --- */}
          <div className="text-center mt-6 opacity-40">
             <Aperture size={20} className="mx-auto mb-2" />
             <p className="text-[10px] uppercase tracking-widest mb-1">Clebrify Holiday v1.0</p>
