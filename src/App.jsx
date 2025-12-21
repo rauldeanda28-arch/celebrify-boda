@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, Users, Download, Loader, Image as ImageIcon, Sparkles, Snowflake, Gift } from 'lucide-react';
+import { 
+  Camera, Home, User, Trash2, MessageCircle, X, LogOut, Aperture, 
+  Heart, Share2, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, 
+  Users, Download, Loader, Image as ImageIcon, Sparkles, Snowflake, Gift 
+} from 'lucide-react';
+
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { 
+  getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, 
+  doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove 
+} from 'firebase/firestore';
+
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import QRCode from "react-qr-code";
@@ -20,14 +29,14 @@ const firebaseConfig = {
 // --- SEGURIDAD ---
 const MASTER_PIN = "123456";  
 const CREATOR_PIN = "777777"; 
+const STORAGE_KEY = 'celebrify_christmas_final_v4_1'; 
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const STORAGE_KEY = 'celebrify_christmas_final_v4_1'; 
 
-// --- ESTILOS ---
+// --- ESTILOS GLOBALES ---
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
@@ -83,7 +92,9 @@ const generateCode = (length) => {
   for (let i = 0; i < length; i++) { result += chars.charAt(Math.floor(Math.random() * chars.length)); }
   return result;
 };
+
 const normalizeName = (name) => name.trim().toLowerCase().replace(/\s+/g, '');
+
 const SnowOverlay = () => {
   const flakes = Array.from({ length: 20 }); 
   return (
@@ -101,10 +112,14 @@ const LoginScreen = ({ onJoin, userUid }) => {
   const [mode, setMode] = useState('join');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Estados Formulario Unirse
   const [joinName, setJoinName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [adminPinInput, setAdminPinInput] = useState('');
+  
+  // Estados Formulario Crear
   const [createEventName, setCreateEventName] = useState('');
   const [createHostName, setCreateHostName] = useState('');
   const [masterPinInput, setMasterPinInput] = useState('');
@@ -120,14 +135,18 @@ const LoginScreen = ({ onJoin, userUid }) => {
     e.preventDefault();
     if (!createEventName || !createHostName || !masterPinInput) return;
     if (masterPinInput !== MASTER_PIN && masterPinInput !== CREATOR_PIN) { setError('⛔ Código inválido.'); return; }
+    
     setLoading(true); setError('');
     try {
       const newEventCode = generateCode(6);
       const newAdminPin = Math.floor(1000 + Math.random() * 9000).toString();
       const eventRef = doc(db, 'events', newEventCode);
+      
       await setDoc(eventRef, { eventName: createEventName, hostName: createHostName, adminPin: newAdminPin, createdAt: serverTimestamp(), code: newEventCode, theme: 'christmas' });
+      
       const hostId = normalizeName(createHostName);
       await setDoc(doc(db, 'events', newEventCode, 'users', hostId), { originalName: createHostName, deviceId: userUid, role: 'host', joinedAt: serverTimestamp() });
+      
       setCreatedEventData({ code: newEventCode, pin: newAdminPin, name: createEventName });
       setMode('success_create');
     } catch (err) { setError('Error al crear.'); } finally { setLoading(false); }
@@ -137,28 +156,36 @@ const LoginScreen = ({ onJoin, userUid }) => {
     e.preventDefault();
     if (!joinName || !joinCode) return;
     if (isAdminLogin && !adminPinInput) return;
+    
     setLoading(true); setError('');
     try {
       const code = joinCode.toUpperCase().trim();
       const eventRef = doc(db, 'events', code);
       const eventSnap = await getDoc(eventRef);
+      
       if (!eventSnap.exists()) { setError('¡Código no existe!'); setLoading(false); return; }
+      
       const eventData = eventSnap.data();
       let role = 'guest';
       let isValidAdmin = false;
+      
       if (isAdminLogin) {
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) { role = 'host'; isValidAdmin = true; } 
         else { setError('PIN incorrecto.'); setLoading(false); return; }
       }
+      
       const cleanName = normalizeName(joinName);
       const userRef = doc(db, 'events', code, 'users', cleanName);
       const userSnap = await getDoc(userRef);
+      
       if (userSnap.exists()) {
           const userData = userSnap.data();
           if (userData.deviceId === userUid) { /* OK */ } 
           else if (isValidAdmin) { await updateDoc(userRef, { deviceId: userUid }); } 
           else { setError(`⚠️ "${joinName}" ya está en uso.`); setLoading(false); return; }
-      } else { await setDoc(userRef, { originalName: joinName, deviceId: userUid, role: role, joinedAt: serverTimestamp() }); }
+      } else { 
+        await setDoc(userRef, { originalName: joinName, deviceId: userUid, role: role, joinedAt: serverTimestamp() }); 
+      }
       onJoin({ name: joinName, role, eventCode: code, eventName: eventData.eventName, adminPin: role === 'host' ? eventData.adminPin : null });
     } catch (err) { setError('Error de conexión.'); } finally { setLoading(false); }
   };
@@ -341,7 +368,6 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   );
 };
 
-// --- PERFIL CORREGIDO: VUELVEN LA CORONA Y EL CONTADOR ---
 const ProfileView = ({ user, onLogout, posts, usersList }) => {
   const [showPin, setShowPin] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -349,10 +375,27 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
   const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?code=${user.eventCode}` : '';
   const copyCode = () => { navigator.clipboard.writeText(user.eventCode); alert("¡Código copiado!"); };
 
-  const handleDownloadAll = async () => { if (posts.length === 0) { alert("No hay fotos."); return; } setIsDownloading(true); try { const zip = new JSZip(); const folder = zip.folder(`celebrify_${user.eventCode}`); posts.forEach((post, index) => { if (!post.imageUrl) return; const isVideo = post.imageUrl.startsWith('data:video'); const ext = isVideo ? 'mp4' : 'jpg'; const base64Data = post.imageUrl.split(',')[1]; if (base64Data) folder.file(`momento_${index + 1}_${post.userName}.${ext}`, base64Data, {base64: true}); }); const content = await zip.generateAsync({type: "blob"}); saveAs(content, `celebrify_${user.eventCode}_album.zip`); } catch (e) { alert("Error."); } finally { setIsDownloading(false); } };
+  const handleDownloadAll = async () => { 
+    if (posts.length === 0) { alert("No hay fotos."); return; } 
+    setIsDownloading(true); 
+    try { 
+      const zip = new JSZip(); 
+      const folder = zip.folder(`celebrify_${user.eventCode}`); 
+      posts.forEach((post, index) => { 
+        if (!post.imageUrl) return; 
+        const isVideo = post.imageUrl.startsWith('data:video'); 
+        const ext = isVideo ? 'mp4' : 'jpg'; 
+        const base64Data = post.imageUrl.split(',')[1]; 
+        if (base64Data) folder.file(`momento_${index + 1}_${post.userName}.${ext}`, base64Data, {base64: true}); 
+      }); 
+      const content = await zip.generateAsync({type: "blob"}); 
+      saveAs(content, `celebrify_${user.eventCode}_album.zip`); 
+    } catch (e) { alert("Error."); } finally { setIsDownloading(false); } 
+  };
 
   return (
-    <div className="flex flex-col h-full p-6 overflow-y-auto pb-32 relative relative z-10">
+    // AQUÍ ESTÁ EL CAMBIO CLAVE: Cambié pb-32 a pb-44 para que el contenido no se oculte detrás del menú
+    <div className="flex flex-col h-full p-6 overflow-y-auto pb-44 relative z-10">
        <SnowOverlay />
        {showQRModal && (
          <div className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6 animate-in fade-in">
@@ -402,7 +445,6 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
                 <p className="text-xs font-bold text-green-400 uppercase tracking-widest">Lista de Invitados ({usersList.length})</p>
             </div>
          </div>
-         {/* LISTA RESTAURADA CON DETALLES */}
          <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
             {usersList.map((u, i) => {
                 const postCount = posts.filter(p => p.userId === u.deviceId).length;
@@ -448,9 +490,17 @@ const ProfileView = ({ user, onLogout, posts, usersList }) => {
          <button onClick={onLogout} className="w-full bg-white/5 border border-red-500/20 text-red-400 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-500/10 transition relative z-10">
            <LogOut size={20} /> Cerrar Sesión
          </button>
+         
+         {/* --- SECCIÓN DEL LINK DE CORREO (Ahora visible gracias al padding extra) --- */}
          <div className="text-center mt-6 opacity-40">
             <Aperture size={20} className="mx-auto mb-2" />
-            <p className="text-[10px] uppercase tracking-widest">Clebrify Holiday v1.0</p>
+            <p className="text-[10px] uppercase tracking-widest mb-1">Clebrify Holiday v1.0</p>
+            <a 
+              href="mailto:contacto@clebrify.com" 
+              className="text-xs text-white/40 font-medium hover:text-white transition-colors border-b border-transparent hover:border-white/40 pb-0.5"
+            >
+              contacto@clebrify.com
+            </a>
          </div>
        </div>
     </div>
@@ -466,7 +516,12 @@ export default function App() {
   const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { signInAnonymously(auth).then(u => setFirebaseUser(u.user)).catch(console.error).finally(() => setLoading(false)); }, []);
+  useEffect(() => { 
+    signInAnonymously(auth)
+      .then(u => setFirebaseUser(u.user))
+      .catch(console.error)
+      .finally(() => setLoading(false)); 
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -474,23 +529,61 @@ export default function App() {
       setPosts(s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0)));
     });
     const unsubU = onSnapshot(collection(db, 'events', currentUser.eventCode, 'users'), s => {
-       setUsersList(s.docs.map(d=>d.data())); setPeopleCount(s.size);
+       setUsersList(s.docs.map(d=>d.data())); 
+       setPeopleCount(s.size);
     });
     return () => { unsubP(); unsubU(); };
   }, [currentUser]);
 
   const handleLogin = (d) => { setCurrentUser(d); localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); };
-  const handleLogout = () => { if(confirm("¿Salir?")){ setCurrentUser(null); localStorage.removeItem(STORAGE_KEY); setView('feed'); }};
+  
+  const handleLogout = () => { 
+    if(confirm("¿Salir?")){ 
+      setCurrentUser(null); 
+      localStorage.removeItem(STORAGE_KEY); 
+      setView('feed'); 
+    }
+  };
+
   const handleUpload = async (url) => {
     setView('feed');
-    await addDoc(collection(db, 'events', currentUser.eventCode, 'posts'), { userId: firebaseUser.uid, userName: currentUser.name, userRole: currentUser.role, imageUrl: url, timestamp: serverTimestamp(), comments: [], likes: [] });
+    await addDoc(collection(db, 'events', currentUser.eventCode, 'posts'), { 
+      userId: firebaseUser.uid, 
+      userName: currentUser.name, 
+      userRole: currentUser.role, 
+      imageUrl: url, 
+      timestamp: serverTimestamp(), 
+      comments: [], 
+      likes: [] 
+    });
   };
-  const handleAddComment = async (pid, txt) => { await updateDoc(doc(db, 'events', currentUser.eventCode, 'posts', pid), { comments: arrayUnion({ text: txt, userName: currentUser.name, timestamp: Date.now() }) }); };
-  const handleDeletePost = async (pid) => { if(confirm("¿Borrar?")) await deleteDoc(doc(db, 'events', currentUser.eventCode, 'posts', pid)); };
-  const handleDeleteComment = async (pid, c) => { const r = doc(db, 'events', currentUser.eventCode, 'posts', pid); const p = posts.find(x=>x.id===pid); if(p) await updateDoc(r, { comments: p.comments.filter(x=>x.timestamp !== c.timestamp) }); };
-  const onToggleLike = async (pid, liked) => { const r = doc(db, 'events', currentUser.eventCode, 'posts', pid); await updateDoc(r, { likes: liked ? arrayUnion(firebaseUser.uid) : arrayUnion(firebaseUser.uid) }); };
+
+  const handleAddComment = async (pid, txt) => { 
+    await updateDoc(doc(db, 'events', currentUser.eventCode, 'posts', pid), { 
+      comments: arrayUnion({ text: txt, userName: currentUser.name, timestamp: Date.now() }) 
+    }); 
+  };
+
+  const handleDeletePost = async (pid) => { 
+    if(confirm("¿Borrar?")) await deleteDoc(doc(db, 'events', currentUser.eventCode, 'posts', pid)); 
+  };
+
+  const handleDeleteComment = async (pid, c) => { 
+    const r = doc(db, 'events', currentUser.eventCode, 'posts', pid); 
+    const p = posts.find(x=>x.id===pid); 
+    if(p) await updateDoc(r, { comments: p.comments.filter(x=>x.timestamp !== c.timestamp) }); 
+  };
+
+  // --- LÓGICA DE LIKES CORREGIDA (DAR Y QUITAR) ---
+  const onToggleLike = async (pid, isLiked) => { 
+    const r = doc(db, 'events', currentUser.eventCode, 'posts', pid); 
+    await updateDoc(r, { 
+      likes: isLiked ? arrayRemove(firebaseUser.uid) : arrayUnion(firebaseUser.uid) 
+    }); 
+  };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-[#051F15] text-white"><Loader className="animate-spin" /></div>;
+  
   if (!currentUser) return ( <> <GlobalStyles /> <LoginScreen onJoin={handleLogin} userUid={firebaseUser?.uid} /> </> );
 
   return (
@@ -499,7 +592,10 @@ export default function App() {
     <div className="flex flex-col h-screen max-w-md mx-auto bg-[#051F15] shadow-2xl relative overflow-hidden">
       {view === 'camera' ? <CameraView onClose={() => setView('feed')} onUpload={handleUpload} /> : view === 'profile' ? (
         <>
-           <header className="bg-[#051F15]/90 backdrop-blur-md px-6 py-4 flex items-center border-b border-white/5"><button onClick={() => setView('feed')}><X/></button><h1 className="ml-4 font-bold font-serif">Mi Perfil</h1></header>
+           <header className="bg-[#051F15]/90 backdrop-blur-md px-6 py-4 flex items-center border-b border-white/5">
+             <button onClick={() => setView('feed')}><X/></button>
+             <h1 className="ml-4 font-bold font-serif">Mi Perfil</h1>
+           </header>
            <ProfileView user={currentUser} onLogout={handleLogout} posts={posts} usersList={usersList} />
         </>
       ) : (
@@ -514,11 +610,10 @@ export default function App() {
         </>
       )}
 
-      {/* --- DOCK FIJO Y PLANO (SIN FLOTAR) --- */}
+      {/* --- DOCK FIJO Y PLANO --- */}
       <nav className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[350px] bg-[#02100a]/95 backdrop-blur-xl border border-white/10 rounded-full h-20 flex justify-around items-center z-50 shadow-2xl px-2">
         <button onClick={() => setView('feed')} className={`p-3 rounded-full transition ${view === 'feed' ? 'bg-white/10 text-green-400' : 'text-gray-500'}`}><Home size={28} /></button>
         
-        {/* BOTÓN CÁMARA CENTRADO DENTRO DE LA BARRA (NO FLOTA) */}
         <button onClick={() => setView('camera')} className="bg-gradient-to-tr from-red-600 to-red-700 text-white p-3.5 rounded-2xl shadow-lg hover:scale-105 transition active:scale-95 flex items-center justify-center">
           <Camera size={32} />
         </button>
