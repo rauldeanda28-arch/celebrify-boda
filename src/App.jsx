@@ -7,8 +7,10 @@ import {
   Maximize2
 } from 'lucide-react';
 
+// --- IMPORTACIÓN NUEVA PARA EL MAPA DE VISITAS ---
+import { Analytics } from '@vercel/analytics/react';
+
 import { initializeApp } from 'firebase/app';
-// Importamos signOut para borrar la sesión completamente al salir
 import { getAuth, signInAnonymously, signOut } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, 
@@ -339,14 +341,10 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
       const userRef = doc(db, 'events', code, 'users', cleanName);
       const userSnap = await getDoc(userRef);
       
-      // --- LÓGICA DE REINGRESO (SOLUCIÓN DEL BUG) ---
+      // --- LÓGICA DE REINGRESO ---
       if (userSnap.exists()) {
-          // Si el usuario existe, asumimos que es el dueño volviendo a entrar
-          // Actualizamos su ID de dispositivo al nuevo (porque al cerrar sesión cambió)
-          // Esto evita que se quede bloqueado afuera con el error "ya existe".
           await updateDoc(userRef, { deviceId: userUid, joinedAt: serverTimestamp() });
       } else { 
-          // Si no existe, lo creamos nuevo
           await setDoc(userRef, { originalName: fullName, deviceId: userUid, role: role, joinedAt: serverTimestamp() }); 
       }
 
@@ -373,7 +371,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
   return (
     <div className="flex flex-col items-center justify-center h-[100dvh] p-6 relative animate-in fade-in">
       
-      {/* HEADER CON LOGO (BANNER) */}
+      {/* HEADER CON LOGO */}
       <nav className="absolute top-0 left-0 w-full px-6 py-6 flex items-center z-20">
         <button onClick={onBack} className="flex items-center gap-2 hover:opacity-80 transition cursor-pointer">
           <img src="/logo.svg" alt="Logo" className="w-8 h-8 rounded-lg" />
@@ -381,16 +379,15 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
         </button>
       </nav>
 
-      {/* SECCIÓN BIENVENIDA + LOGO GRANDE */}
+      {/* SECCIÓN DE BIENVENIDA */}
       <div className="mb-8 text-center z-10 animate-enter mt-10">
         <img src="/logo.svg" alt="Clebrify Logo" className="w-20 h-20 mx-auto mb-6 shadow-xl rounded-[2rem] hover:scale-105 transition duration-500" />
         <h1 className={`text-4xl font-bold font-serif ${isDark ? 'text-white' : 'text-gray-900'}`}>Bienvenido</h1>
-        {/* TEXTO CAMBIADO PARA QUE SIRVA PARA REGISTRO Y LOGIN */}
         <p className="text-gray-400 text-sm mt-2">Ingresa tu nombre para acceder al evento</p>
       </div>
 
       <div className="w-full max-w-sm glass-panel rounded-3xl overflow-hidden z-10 shadow-2xl animate-enter" style={{animationDelay: '0.1s'}}>
-        {/* PESTAÑAS CAMBIADAS A INVITADO / ADMINISTRADOR */}
+        {/* PESTAÑAS INVITADO / ADMINISTRADOR */}
         <div className={`flex border-b ${isDark ? 'border-white/10' : 'border-black/5'}`}>
             <button onClick={() => setMode('join')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'join' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>INVITADO</button>
             <button onClick={() => setMode('create')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'create' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>ADMINISTRADOR</button>
