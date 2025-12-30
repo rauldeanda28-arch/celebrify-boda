@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
+// Importamos signOut para borrar la sesión completamente al salir
 import { getAuth, signInAnonymously, signOut } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, 
@@ -161,7 +162,7 @@ const LandingPage = ({ onStart, theme, toggleTheme }) => {
       {/* NAVBAR */}
       <nav className={`w-full px-6 py-4 flex justify-between items-center z-50 sticky top-0 backdrop-blur-md border-b ${isDark ? 'bg-[#0f172a]/90 border-white/5' : 'bg-white/90 border-gray-100'}`}>
         <div className="flex items-center gap-2">
-          {/* Usamos el logo real aquí también para consistencia */}
+          {/* Logo en la Navbar */}
           <img src="/logo.svg" alt="Clebrify" className="w-8 h-8 rounded-lg" />
           <span className={`text-xl font-serif font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
         </div>
@@ -309,7 +310,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
       let role = 'guest';
       let isValidAdmin = false;
 
-      // 1. PRIMERO: VERIFICAR SI ES ADMIN (INMUNIDAD)
+      // 1. VERIFICAR SI ES ADMIN (INMUNIDAD)
       if (isAdminLogin) {
         if (adminPinInput === eventData.adminPin || adminPinInput === MASTER_PIN) { 
             role = 'host'; 
@@ -323,7 +324,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
         }
       }
 
-      // 2. SEGUNDO: SI NO ES ADMIN, REVISAR BANEOS
+      // 2. VERIFICAR BANEOS
       if (!isValidAdmin) {
           const banRef = doc(db, 'events', code, 'banned', userUid);
           const banSnap = await getDoc(banRef);
@@ -337,14 +338,18 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
       const cleanName = normalizeName(fullName);
       const userRef = doc(db, 'events', code, 'users', cleanName);
       const userSnap = await getDoc(userRef);
+      
+      // --- LÓGICA DE REINGRESO (SOLUCIÓN DEL BUG) ---
       if (userSnap.exists()) {
-          const userData = userSnap.data();
-          if (userData.deviceId === userUid) { /* OK */ } 
-          else if (isValidAdmin) { await updateDoc(userRef, { deviceId: userUid }); } 
-          else { setError(`⚠️ "${fullName}" ya está registrado.`); setLoading(false); return; }
+          // Si el usuario existe, asumimos que es el dueño volviendo a entrar
+          // Actualizamos su ID de dispositivo al nuevo (porque al cerrar sesión cambió)
+          // Esto evita que se quede bloqueado afuera con el error "ya existe".
+          await updateDoc(userRef, { deviceId: userUid, joinedAt: serverTimestamp() });
       } else { 
-        await setDoc(userRef, { originalName: fullName, deviceId: userUid, role: role, joinedAt: serverTimestamp() }); 
+          // Si no existe, lo creamos nuevo
+          await setDoc(userRef, { originalName: fullName, deviceId: userUid, role: role, joinedAt: serverTimestamp() }); 
       }
+
       onJoin({ name: fullName, role, eventCode: code, eventName: eventData.eventName, adminPin: role === 'host' ? eventData.adminPin : null });
     } catch (err) { setError('Error de conexión.'); } finally { setLoading(false); }
   };
@@ -368,7 +373,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
   return (
     <div className="flex flex-col items-center justify-center h-[100dvh] p-6 relative animate-in fade-in">
       
-      {/* NUEVO HEADER (BANNER) - Reemplaza al botón de texto simple */}
+      {/* HEADER CON LOGO (BANNER) */}
       <nav className="absolute top-0 left-0 w-full px-6 py-6 flex items-center z-20">
         <button onClick={onBack} className="flex items-center gap-2 hover:opacity-80 transition cursor-pointer">
           <img src="/logo.svg" alt="Logo" className="w-8 h-8 rounded-lg" />
@@ -376,15 +381,21 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
         </button>
       </nav>
 
-      {/* SECCIÓN DE BIENVENIDA CON LOGO AGREGADO */}
+      {/* SECCIÓN BIENVENIDA + LOGO GRANDE */}
       <div className="mb-8 text-center z-10 animate-enter mt-10">
         <img src="/logo.svg" alt="Clebrify Logo" className="w-20 h-20 mx-auto mb-6 shadow-xl rounded-[2rem] hover:scale-105 transition duration-500" />
         <h1 className={`text-4xl font-bold font-serif ${isDark ? 'text-white' : 'text-gray-900'}`}>Bienvenido</h1>
-        <p className="text-gray-400 text-sm mt-2">Completa tu registro para continuar</p>
+        {/* TEXTO CAMBIADO PARA QUE SIRVA PARA REGISTRO Y LOGIN */}
+        <p className="text-gray-400 text-sm mt-2">Ingresa tu nombre para acceder al evento</p>
       </div>
 
       <div className="w-full max-w-sm glass-panel rounded-3xl overflow-hidden z-10 shadow-2xl animate-enter" style={{animationDelay: '0.1s'}}>
-        <div className={`flex border-b ${isDark ? 'border-white/10' : 'border-black/5'}`}><button onClick={() => setMode('join')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'join' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>INVITADO</button><button onClick={() => setMode('create')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'create' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>ANFITRIÓN</button></div>
+        {/* PESTAÑAS CAMBIADAS A INVITADO / ADMINISTRADOR */}
+        <div className={`flex border-b ${isDark ? 'border-white/10' : 'border-black/5'}`}>
+            <button onClick={() => setMode('join')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'join' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>INVITADO</button>
+            <button onClick={() => setMode('create')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'create' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>ADMINISTRADOR</button>
+        </div>
+        
         <div className="p-8">
           {error && <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg text-center flex items-center justify-center gap-2 font-bold animate-in fade-in slide-in-from-top-2"><ShieldAlert size={16}/> {error}</div>}
           {mode === 'join' ? (
