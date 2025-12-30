@@ -869,8 +869,9 @@ export default function App() {
   return (
     <>
     <GlobalStyles theme={theme} />
+    <Analytics />  {/* <--- ¡ESTA ES LA LÍNEA QUE FALTABA! AGREGALA AQUÍ */}
+    
     <div className="flex flex-col h-screen max-w-md mx-auto shadow-2xl relative overflow-hidden transition-colors duration-500" style={{ background: isDark ? 'linear-gradient(135deg, #0f172a 0%, #172554 100%)' : '#FFFFFF' }}>
-      
       {/* VISOR DE MEDIOS SE MUESTRA SI HAY ALGO SELECCIONADO */}
       {selectedMedia && (
         <MediaViewer media={selectedMedia} onClose={() => setSelectedMedia(null)} />
