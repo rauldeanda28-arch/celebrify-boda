@@ -4,7 +4,7 @@ import {
   Heart, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, 
   Users, Download, Loader, Image as ImageIcon, Sparkles, Sun, Moon,
   ChevronRight, ChevronDown, CheckCircle2, ArrowRight, Mail, UserMinus, ShieldAlert, Instagram,
-  Maximize2, Share, PlusSquare, Smartphone
+  Maximize2, Share, PlusSquare, Smartphone, Edit2
 } from 'lucide-react';
 
 // --- IMPORTACIÓN PARA EL MAPA DE VISITAS ---
@@ -37,7 +37,7 @@ const MASTER_PIN = "123456";
 const CREATOR_PIN = "777777"; 
 const STORAGE_KEY = 'celebrify_v5_7_session'; 
 const THEME_KEY = 'celebrify_theme_pref';
-const INTRO_KEY = 'celebrify_intro_seen_v1'; // Llave para el tutorial
+const INTRO_KEY = 'celebrify_intro_seen_v1'; 
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
@@ -121,7 +121,6 @@ const ThemeToggle = ({ theme, toggleTheme }) => (
 
 // --- PANTALLA DE INSTRUCCIONES (ONBOARDING) ---
 const OnboardingScreen = ({ onFinish }) => {
-  // Detectar si es un dispositivo iOS (iPhone/iPad)
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   return (
@@ -851,6 +850,28 @@ export default function App() {
     }
   };
 
+  // --- FUNCIÓN PARA CAMBIAR NOMBRE DEL EVENTO ---
+  const handleEditEventName = async () => {
+    const newName = prompt("Nuevo nombre del evento:", currentUser.eventName);
+    
+    if (newName && newName.trim() !== "" && newName !== currentUser.eventName) {
+      try {
+        // 1. Actualizar en la Base de Datos (Firestore)
+        const eventRef = doc(db, 'events', currentUser.eventCode);
+        await updateDoc(eventRef, { eventName: newName.trim() });
+
+        // 2. Actualizar visualmente en la App (Estado Local)
+        const updatedUser = { ...currentUser, eventName: newName.trim() };
+        setCurrentUser(updatedUser);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser)); // Guardar en celular
+        
+      } catch (error) {
+        console.error("Error al actualizar:", error);
+        alert("No se pudo actualizar el nombre.");
+      }
+    }
+  };
+
   const handleKickGuest = async (guestId, guestUid) => {
     if(!confirm("¿Estás seguro? Esta acción bloqueará el dispositivo del usuario para siempre.")) return;
     try {
@@ -1006,7 +1027,18 @@ export default function App() {
                 Clebrify
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono border tracking-widest ${isDark ? 'bg-white/5 text-gray-400 border-white/5' : 'bg-black/5 text-gray-500 border-black/5'}`}>{currentUser.eventCode}</span>
               </h1>
-              <p className="text-sm text-yellow-600/90 font-medium max-w-[200px] truncate">{currentUser.eventName}</p>
+              {/* BOTÓN PARA EDITAR NOMBRE DEL EVENTO */}
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-yellow-600/90 font-medium max-w-[200px] truncate">{currentUser.eventName}</p>
+                {currentUser.role === 'host' && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleEditEventName(); }} 
+                    className="p-1 rounded-full hover:bg-yellow-500/10 text-yellow-600/50 hover:text-yellow-600 transition"
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <div className={`border px-2 py-1 rounded-full flex items-center gap-1 text-xs ${isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-black/5 border-black/5 text-gray-600'}`}>
