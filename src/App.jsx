@@ -450,30 +450,35 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack }) => {
       <div className="mb-8 text-center z-10 animate-enter mt-10">
         <img src="/logo.svg" alt="Clebrify Logo" className="w-20 h-20 mx-auto mb-6 shadow-xl rounded-[2rem] hover:scale-105 transition duration-500" />
         <h1 className={`text-4xl font-bold font-serif ${isDark ? 'text-white' : 'text-gray-900'}`}>Bienvenido</h1>
-        <p className="text-gray-400 text-sm mt-2">Ingresa tu nombre para acceder al evento</p>
+        {/* TEXTO DINÁMICO SEGÚN LA PESTAÑA */}
+        <p className="text-gray-400 text-sm mt-2">
+            {mode === 'join' ? 'Ingresa tus datos para unirte a la fiesta' : 'Configura tu evento en segundos'}
+        </p>
       </div>
 
       <div className="w-full max-w-sm glass-panel rounded-3xl overflow-hidden z-10 shadow-2xl animate-enter" style={{animationDelay: '0.1s'}}>
-        {/* PESTAÑAS INVITADO / ADMINISTRADOR */}
+        
+        {/* PESTAÑAS CAMBIADAS: INGRESAR | CREAR EVENTO */}
         <div className={`flex border-b ${isDark ? 'border-white/10' : 'border-black/5'}`}>
-            <button onClick={() => setMode('join')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'join' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>INVITADO</button>
-            <button onClick={() => setMode('create')} className={`flex-1 py-4 font-bold text-sm tracking-wide transition-colors ${mode === 'create' ? 'bg-white/5 text-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>ADMINISTRADOR</button>
+            <button onClick={() => setMode('join')} className={`flex-1 py-4 font-bold text-xs tracking-widest transition-colors ${mode === 'join' ? 'bg-white/5 text-yellow-500 border-b-2 border-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>INGRESAR</button>
+            <button onClick={() => setMode('create')} className={`flex-1 py-4 font-bold text-xs tracking-widest transition-colors ${mode === 'create' ? 'bg-white/5 text-yellow-500 border-b-2 border-yellow-500' : 'text-gray-500 hover:text-gray-400'}`}>CREAR EVENTO</button>
         </div>
         
         <div className="p-8">
           {error && <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg text-center flex items-center justify-center gap-2 font-bold animate-in fade-in slide-in-from-top-2"><ShieldAlert size={16}/> {error}</div>}
+          
           {mode === 'join' ? (
             <form onSubmit={handleJoinEvent} className="space-y-4">
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">CÓDIGO</label><input type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} className={`${inputClass} border`} placeholder="XY2Z" maxLength={6} /></div>
-              <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">NOMBRE</label><input type="text" value={joinFirstName} onChange={(e) => setJoinFirstName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Juan" /></div><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">APELLIDO</label><input type="text" value={joinLastName} onChange={(e) => setJoinLastName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Pérez" /></div></div>
+              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">CÓDIGO DE EVENTO</label><input type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} className={`${inputClass} border`} placeholder="XY2Z" maxLength={6} /></div>
+              <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">TU NOMBRE</label><input type="text" value={joinFirstName} onChange={(e) => setJoinFirstName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Juan" /></div><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">TU APELLIDO</label><input type="text" value={joinLastName} onChange={(e) => setJoinLastName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Pérez" /></div></div>
               <div className="flex items-center gap-3 pt-2"><input type="checkbox" checked={isAdminLogin} onChange={() => setIsAdminLogin(!isAdminLogin)} className="h-4 w-4 accent-yellow-400 bg-black/30 rounded border-gray-600" /><span className="text-xs text-gray-500">Soy Admin / Anfitrión</span></div>
               {isAdminLogin && (<div className="animate-in fade-in slide-in-from-top-2"><input type="tel" value={adminPinInput} onChange={(e) => setAdminPinInput(e.target.value)} className={`${inputRegularClass} text-center tracking-widest border border-yellow-500/30 text-yellow-600`} placeholder="PIN ADMIN" maxLength={6} /></div>)}
               <button disabled={loading} className="w-full btn-primary py-4 rounded-xl mt-4 shadow-lg">{loading ? <Loader className="animate-spin mx-auto text-black" /> : 'Entrar'}</button>
             </form>
           ) : (
             <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">EVENTO</label><input type="text" value={createEventName} onChange={(e) => setCreateEventName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Ej. Boda Ana y Luis" /></div>
-              <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">NOMBRE</label><input type="text" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Ana" /></div><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">APELLIDO</label><input type="text" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} className={`${inputRegularClass} border`} placeholder="López" /></div></div>
+              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">NOMBRE DEL EVENTO</label><input type="text" value={createEventName} onChange={(e) => setCreateEventName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Ej. Boda Ana y Luis" /></div>
+              <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">TU NOMBRE</label><input type="text" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} className={`${inputRegularClass} border`} placeholder="Ana" /></div><div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">TU APELLIDO</label><input type="text" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} className={`${inputRegularClass} border`} placeholder="López" /></div></div>
               <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 ml-1 tracking-widest">LICENCIA</label><input type="password" value={masterPinInput} onChange={(e) => setMasterPinInput(e.target.value)} className={`${inputRegularClass} border border-red-500/20`} placeholder="PIN Maestro" /></div>
               <button disabled={loading} className="w-full btn-primary py-4 rounded-xl mt-2 shadow-lg">{loading ? <Loader className="animate-spin mx-auto text-black" /> : 'Crear Evento'}</button>
             </form>
