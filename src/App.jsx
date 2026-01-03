@@ -4,10 +4,10 @@ import {
   Heart, Copy, Video, Lock, Upload, QrCode, Eye, EyeOff, 
   Users, Download, Loader, Image as ImageIcon, Sparkles, Sun, Moon,
   ChevronRight, ChevronDown, CheckCircle2, ArrowRight, Mail, UserMinus, ShieldAlert, Instagram,
-  Maximize2
+  Maximize2, Share, PlusSquare, Smartphone
 } from 'lucide-react';
 
-// --- IMPORTACIÓN NUEVA PARA EL MAPA DE VISITAS ---
+// --- IMPORTACIÓN PARA EL MAPA DE VISITAS ---
 import { Analytics } from '@vercel/analytics/react';
 
 import { initializeApp } from 'firebase/app';
@@ -37,6 +37,7 @@ const MASTER_PIN = "123456";
 const CREATOR_PIN = "777777"; 
 const STORAGE_KEY = 'celebrify_v5_7_session'; 
 const THEME_KEY = 'celebrify_theme_pref';
+const INTRO_KEY = 'celebrify_intro_seen_v1'; // Llave para el tutorial
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
@@ -117,6 +118,72 @@ const ThemeToggle = ({ theme, toggleTheme }) => (
     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
   </button>
 );
+
+// --- PANTALLA DE INSTRUCCIONES (ONBOARDING) ---
+const OnboardingScreen = ({ onFinish }) => {
+  // Detectar si es un dispositivo iOS (iPhone/iPad)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-[#0f172a] text-white flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 overflow-y-auto">
+      <div className="w-full max-w-md space-y-6 text-center my-auto">
+        
+        <div className="mb-4">
+           <img src="/logo.svg" alt="Logo" className="w-24 h-24 mx-auto mb-4 rounded-3xl shadow-2xl shadow-yellow-500/20" />
+           <h1 className="text-3xl font-serif font-bold text-yellow-500">¡Hola! 👋</h1>
+           <p className="text-gray-400 mt-2 text-sm">Bienvenido a Clebrify. Sigue estos pasos para la mejor experiencia.</p>
+        </div>
+
+        <div className="space-y-4 text-left bg-white/5 p-6 rounded-2xl border border-white/10">
+           {/* PASO 1: INSTALAR */}
+           <div className="flex gap-4">
+              <div className="bg-yellow-500/20 p-3 rounded-xl h-fit text-yellow-500 flex-shrink-0"><Smartphone size={24}/></div>
+              <div>
+                 <h3 className="font-bold text-lg mb-1 text-white">1. Instala la App</h3>
+                 {isIOS ? (
+                    <div className="text-sm text-gray-300 leading-relaxed space-y-2">
+                       <p>Para verla en pantalla completa:</p>
+                       <p>1. Pulsa el botón <span className="font-bold text-white"><Share size={14} className="inline"/> Compartir</span> en la barra inferior.</p>
+                       <p>2. Desliza hacia abajo y selecciona <span className="font-bold text-white"><PlusSquare size={14} className="inline"/> Agregar a Inicio</span>.</p>
+                    </div>
+                 ) : (
+                    <p className="text-sm text-gray-300 leading-relaxed">
+                       Si usas Chrome, pulsa el menú de 3 puntos arriba y selecciona <span className="text-white font-bold">"Instalar aplicación"</span> o "Agregar a la pantalla principal".
+                    </p>
+                 )}
+              </div>
+           </div>
+
+           {/* PASO 2: REGISTRO */}
+           <div className="flex gap-4 pt-4 border-t border-white/5">
+              <div className="bg-blue-500/20 p-3 rounded-xl h-fit text-blue-400 flex-shrink-0"><User size={24}/></div>
+              <div>
+                 <h3 className="font-bold text-lg mb-1 text-white">2. Tu Nombre</h3>
+                 <p className="text-sm text-gray-400">Ingresa tu nombre y el código del evento para unirte a la fiesta.</p>
+              </div>
+           </div>
+
+           {/* PASO 3: FOTOS */}
+           <div className="flex gap-4 pt-4 border-t border-white/5">
+              <div className="bg-purple-500/20 p-3 rounded-xl h-fit text-purple-400 flex-shrink-0"><Camera size={24}/></div>
+              <div>
+                 <h3 className="font-bold text-lg mb-1 text-white">3. ¡Captura!</h3>
+                 <p className="text-sm text-gray-400">Toma fotos y videos. Todos los invitados verán los momentos en tiempo real.</p>
+              </div>
+           </div>
+        </div>
+
+        <button 
+          onClick={onFinish}
+          className="w-full btn-primary py-4 rounded-xl text-lg font-bold shadow-lg shadow-yellow-500/20 animate-enter"
+        >
+          ¡Entendido, vamos! 🚀
+        </button>
+
+      </div>
+    </div>
+  );
+};
 
 // --- PANTALLA DE ACCESO DENEGADO (BANEADO) ---
 const BannedScreen = ({ onTryAdmin }) => (
@@ -654,6 +721,9 @@ export default function App() {
   const [banned, setBanned] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(null); 
   
+  // -- ESTADO PARA LA INTRODUCCIÓN --
+  const [showIntro, setShowIntro] = useState(false);
+
   // -- TEMA (Dark/Light) --
   const [theme, setTheme] = useState(() => {
       const savedTheme = localStorage.getItem(THEME_KEY);
@@ -695,6 +765,22 @@ export default function App() {
     appleLink.href = '/logo.svg';
 
   }, []);
+
+  // --- EFECTO: REVISAR SI MOSTRAR LA INTRODUCCIÓN ---
+  useEffect(() => {
+    // Solo mostramos la intro si:
+    // 1. No hay usuario logueado actualmente.
+    // 2. No la ha visto antes (revisando localStorage).
+    const hasSeen = localStorage.getItem(INTRO_KEY);
+    if (!hasSeen && !currentUser) {
+        setShowIntro(true);
+    }
+  }, [currentUser]);
+
+  const handleFinishIntro = () => {
+      setShowIntro(false);
+      localStorage.setItem(INTRO_KEY, 'true'); // Guardamos que ya la vio
+  };
 
   useEffect(() => {
     if (currentUser) {
@@ -847,6 +933,16 @@ export default function App() {
       );
   }
 
+  // --- NUEVA LÓGICA: MOSTRAR INTRO ANTES DEL LANDING ---
+  if (showIntro) {
+      return (
+          <>
+            <GlobalStyles theme="dark" /> {/* La intro siempre es dark mode para elegancia */}
+            <OnboardingScreen onFinish={handleFinishIntro} />
+          </>
+      );
+  }
+
   if (showLanding && !currentUser) {
     return (
       <>
@@ -869,9 +965,10 @@ export default function App() {
   return (
     <>
     <GlobalStyles theme={theme} />
-    <Analytics />  {/* <--- ¡ESTA ES LA LÍNEA QUE FALTABA! AGREGALA AQUÍ */}
+    <Analytics />
     
     <div className="flex flex-col h-screen max-w-md mx-auto shadow-2xl relative overflow-hidden transition-colors duration-500" style={{ background: isDark ? 'linear-gradient(135deg, #0f172a 0%, #172554 100%)' : '#FFFFFF' }}>
+      
       {/* VISOR DE MEDIOS SE MUESTRA SI HAY ALGO SELECCIONADO */}
       {selectedMedia && (
         <MediaViewer media={selectedMedia} onClose={() => setSelectedMedia(null)} />
