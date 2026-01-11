@@ -18,7 +18,8 @@ import {
   doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove,
   where, getDocs 
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
+// SE AGREGA uploadBytesResumable PARA LA BARRA DE PROGRESO
+import { getStorage, ref, uploadBytes, uploadString, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -73,7 +74,7 @@ const TRANSLATIONS = {
     test_3_role: "Cumpleaños 30",
     test_3_text: "Lo mejor fue que mis amigos no tuvieron que descargar nada. Escanearon el QR y listo, todos subiendo fotos al instante.",
 
-    // Final CTA (TEXTO MEJORADO)
+    // Final CTA
     cta_title: "¿Listo para tu próximo evento?",
     cta_desc: "Olvídate de pedir que te pasen las fotos mañana. Crea tu álbum compartido hoy y deja que tus invitados capturen la magia.",
     cta_btn: "Crear mi Evento",
@@ -157,7 +158,7 @@ const TRANSLATIONS = {
     likes_list: "Le gusta a...",
     likes_count: "Me gusta",
 
-    // --- NUEVOS MODALES PERSONALIZADOS ---
+    // Modals
     modal_edit_title: "Editar nombre del evento",
     lbl_new_name: "Nuevo nombre",
     btn_cancel: "Cancelar",
@@ -189,7 +190,7 @@ const TRANSLATIONS = {
     test_3_role: "30th Birthday",
     test_3_text: "The best part was that my friends didn't have to download anything. They scanned the QR and boom, uploading photos instantly.",
 
-    // Final CTA (IMPROVED TEXT)
+    // Final CTA
     cta_title: "Ready for your next event?",
     cta_desc: "Forget about chasing photos tomorrow. Create your shared album today and let your guests capture the magic.",
     cta_btn: "Create my Event",
@@ -1474,6 +1475,8 @@ export default function App() {
   const [uploadQueue, setUploadQueue] = useState([]); 
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  // NUEVO ESTADO: Progreso de subida (0 a 100)
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [showLanding, setShowLanding] = useState(true);
   const [banned, setBanned] = useState(false);
@@ -1534,7 +1537,7 @@ export default function App() {
       };
   }, []);
 
-  // --- PROCESADOR DE LA COLA DE SUBIDA ---
+  // --- PROCESADOR DE LA COLA DE SUBIDA (ACTUALIZADO CON PROGRESS BAR) ---
   useEffect(() => {
       if (!isOnline || isProcessingQueue || uploadQueue.length === 0) return;
       
@@ -1543,6 +1546,8 @@ export default function App() {
 
       const processItem = async () => {
           setIsProcessingQueue(true);
+          setUploadProgress(0); // Reiniciar barra
+          
           // Marcar como subiendo
           setUploadQueue(prev => prev.map(i => i.id === itemToUpload.id ? { ...i, status: 'uploading' } : i));
 
@@ -1555,11 +1560,30 @@ export default function App() {
               const fileName = `${timestamp}_${Math.floor(Math.random()*1000)}.${ext}`;
               const storageRef = ref(storage, `events/${currentUser.eventCode}/${folder}/${fileName}`);
 
+              // LÓGICA DE SUBIDA CON PROGRESO (Videos o Fotos pesadas)
               if (type === 'video') {
-                  const snapshot = await uploadBytes(storageRef, itemToUpload.data);
-                  downloadUrl = await getDownloadURL(snapshot.ref);
+                  const uploadTask = uploadBytesResumable(storageRef, itemToUpload.data);
+                  
+                  // Promesa para esperar a que termine el Task
+                  await new Promise((resolve, reject) => {
+                      uploadTask.on('state_changed', 
+                          (snapshot) => {
+                              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                              setUploadProgress(progress);
+                          }, 
+                          (error) => reject(error), 
+                          () => resolve()
+                      );
+                  });
+                  
+                  downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+
               } else {
+                  // Para fotos (base64 string) usamos uploadString que es más directo
+                  // Simulamos un progreso rápido
+                  setUploadProgress(10);
                   const snapshot = await uploadString(storageRef, itemToUpload.data, 'data_url');
+                  setUploadProgress(100);
                   downloadUrl = await getDownloadURL(snapshot.ref);
               }
 
@@ -1577,10 +1601,10 @@ export default function App() {
 
               // Éxito: Eliminar de la cola
               setUploadQueue(prev => prev.filter(i => i.id !== itemToUpload.id));
+              setUploadProgress(0); // Limpiar barra al final
 
           } catch (error) {
               console.error("Error subiendo (background):", error);
-              // Error: Dejar en la cola pero marcar como error
               if (!navigator.onLine) {
                  setUploadQueue(prev => prev.map(i => i.id === itemToUpload.id ? { ...i, status: 'waiting_connection' } : i));
               } else {
@@ -1949,20 +1973,33 @@ export default function App() {
           </div>
       )}
 
-      {/* --- BARRA DE ESTADO DE SUBIDA --- */}
+      {/* --- BARRA DE ESTADO DE SUBIDA (AHORA CON TEMA Y PROGRESO) --- */}
       {uploadQueue.length > 0 && (
          <div className="absolute top-20 left-0 right-0 z-40 px-4 flex justify-center pointer-events-none animate-in slide-in-from-top-2">
-            <div className={`backdrop-blur-md px-4 py-2 rounded-full shadow-xl border flex items-center gap-3 ${
-                !isOnline ? 'bg-orange-500/90 border-orange-400 text-white' : 
-                'bg-gray-900/90 border-gray-700 text-white'
+            <div className={`backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border flex flex-col gap-2 min-w-[200px] transition-colors ${
+                isDark 
+                ? 'bg-slate-900/95 border-slate-700 text-white' 
+                : 'bg-white/95 border-gray-200 text-gray-900 shadow-2xl'
             }`}>
-               { !isOnline ? <WifiOff size={16} className="animate-pulse" /> : <RefreshCw size={16} className="animate-spin" /> }
-               <span className="text-xs font-bold">
-                  { !isOnline 
-                    ? `${text.waiting_net} (${uploadQueue.length})` 
-                    : `${text.uploading} ${uploadQueue.length}...`
-                  }
-               </span>
+               <div className="flex items-center gap-3">
+                   { !isOnline ? <WifiOff size={16} className="animate-pulse text-red-500" /> : <RefreshCw size={16} className={`animate-spin ${isDark ? 'text-white' : 'text-black'}`} /> }
+                   <span className="text-xs font-bold">
+                      { !isOnline 
+                        ? `${text.waiting_net} (${uploadQueue.length})` 
+                        : `${text.uploading} ${uploadQueue.length}...`
+                      }
+                   </span>
+               </div>
+               
+               {/* BARRA DE PROGRESO */}
+               {isOnline && (
+                   <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                       <div 
+                           className="h-full bg-green-500 rounded-full transition-all duration-300 ease-out" 
+                           style={{ width: `${Math.max(5, uploadProgress)}%` }} // Minimo 5% para que se vea algo
+                       ></div>
+                   </div>
+               )}
             </div>
          </div>
       )}
