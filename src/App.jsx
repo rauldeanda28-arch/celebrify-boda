@@ -18,7 +18,6 @@ import {
   doc, serverTimestamp, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove,
   where, getDocs 
 } from 'firebase/firestore';
-// SE AGREGA uploadBytesResumable PARA LA BARRA DE PROGRESO
 import { getStorage, ref, uploadBytes, uploadString, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import JSZip from 'jszip';
@@ -166,122 +165,6 @@ const TRANSLATIONS = {
     lbl_ann_msg: "Mensaje para los invitados",
     ph_ann_msg: "Escribe aquí... (déjalo vacío para borrar)",
     btn_post: "Publicar"
-  },
-  en: {
-    // Landing
-    nav_login: "Login",
-    hero_badge: "The App for your Events",
-    hero_title_1: "Your memories,",
-    hero_title_2: "all in one place.",
-    hero_desc: "The ultimate platform for your events. Forget chasing guests for photos; with Clebrify, they capture moments in real-time.",
-    btn_create: "Create Event",
-    btn_code: "I have a Code",
-    features_title: "Everything you need",
-
-    // Testimonials
-    test_title: "What our users say",
-    test_1_name: "Anna & Charles",
-    test_1_role: "Just Married",
-    test_1_text: "It was amazing to wake up the next day and see hundreds of photos and videos we didn't know existed. Best decision for our wedding!",
-    test_2_name: "Mariana L.",
-    test_2_role: "Event Planner",
-    test_2_text: "My clients love the privacy. It is much safer than an Instagram hashtag and the video quality is impeccable.",
-    test_3_name: "George D.",
-    test_3_role: "30th Birthday",
-    test_3_text: "The best part was that my friends didn't have to download anything. They scanned the QR and boom, uploading photos instantly.",
-
-    // Final CTA
-    cta_title: "Ready for your next event?",
-    cta_desc: "Forget about chasing photos tomorrow. Create your shared album today and let your guests capture the magic.",
-    cta_btn: "Create my Event",
-
-    // Features Landing
-    ft_1_title: "100% Private", ft_1_desc: "Your photos are not public.", ft_1_det: "Only guests with the unique code can view and upload.",
-    ft_2_title: "HD Video", ft_2_desc: "Upload best moments videos.", ft_2_det: "Full support for high definition videos.",
-    ft_3_title: "Easy Access", ft_3_desc: "Print the QR and go.", ft_3_det: "Guests just scan to join instantly.",
-    ft_4_title: "ZIP Album", ft_4_desc: "Download everything at the end.", ft_4_det: "Download all photos and videos in a single file.",
-    ft_5_title: "Connect", ft_5_desc: "Share your Instagram.", ft_5_det: "Connect with other guests by sharing your profile.",
-    ft_6_title: "Announcements", ft_6_desc: "Messages from the host.", ft_6_det: "Important alerts with sound for all guests.",
-    check_1: "No app download", check_2: "Original Quality", footer_rights: "All rights reserved.",
-
-    // Login & Create Forms
-    welcome_title: "Welcome",
-    welcome_desc_join: "Enter the code to join the party",
-    welcome_desc_create: "Request your private event",
-    tab_join: "JOIN",
-    tab_create: "REQUEST EVENT",
-    
-    // Join Form
-    lbl_code: "EVENT CODE",
-    lbl_name: "YOUR NAME",
-    lbl_lastname: "YOUR LAST NAME",
-    chk_admin: "I am Admin / Host",
-    ph_admin_pin: "ADMIN PIN",
-    btn_enter: "Enter",
-    
-    // Create Form
-    lbl_event_name: "EVENT NAME *",
-    ph_event_name: "Anna & Louis Wedding",
-    lbl_host_1: "HOST 1 *",
-    lbl_lastname_p: "LAST NAME (P) *",
-    lbl_lastname_m: "LAST NAME (M) *",
-    lbl_email: "EMAIL ADDRESS *",
-    lbl_phone: "PHONE / WHATSAPP *",
-    chk_host_2: "Add another host",
-    title_host_2: "Second Host Details",
-    lbl_host_2: "HOST 2 *",
-    lbl_email_2: "EMAIL (2nd HOST) *",
-    lbl_phone_2: "PHONE (2nd HOST) *",
-    btn_request: "Request Event",
-    
-    // Waiting Screen
-    req_sent: "Request Sent",
-    req_desc: "We have received your request. We are verifying your data.",
-    req_warn: "Please do not close this screen.",
-    req_cancel: "Cancel and return",
-    
-    // Approved Screen
-    approved: "Approved!",
-    approved_desc: "Your event is ready to use.",
-    code_guest: "Guest Code",
-    pin_admin: "Admin PIN (Private)",
-    btn_enter_now: "Enter now",
-
-    // Profile & App
-    profile_title: "My Profile",
-    host_badge: "Host",
-    guest_badge: "Guest",
-    connect_insta: "Connect Instagram",
-    save_btn: "Save",
-    saved_msg: "Saved!",
-    invite_friends: "Invite Friends",
-    code_copied: "Code copied!",
-    guest_list: "Guest List",
-    kick_guest: "Kick guest",
-    download_album: "Download Album",
-    downloading: "Downloading...",
-    master_pin: "Your Master PIN",
-    logout: "Log Out",
-    need_help: "Need help?",
-
-    // Feed & Comments
-    no_photos: "No photos yet",
-    uploading: "Uploading",
-    waiting_net: "Waiting for signal",
-    host_msg_title: "Host Message",
-    ph_comment: "Comment...",
-    btn_send: "Send",
-    likes_list: "Liked by...",
-    likes_count: "Likes",
-
-    // Modals
-    modal_edit_title: "Edit Event Name",
-    lbl_new_name: "New Name",
-    btn_cancel: "Cancel",
-    modal_ann_title: "Post Announcement",
-    lbl_ann_msg: "Message for guests",
-    ph_ann_msg: "Write here... (leave empty to delete)",
-    btn_post: "Post"
   }
 };
 
@@ -350,7 +233,7 @@ const generateCode = (length) => {
   return result;
 };
 
-// CORRECCIÓN: Función mejorada para ignorar acentos y unificar usuarios
+// CORRECCIÓN: Función para unificar usuarios (sin acentos, sin espacios)
 const normalizeName = (name) => {
   return name
     .trim()
@@ -1087,7 +970,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
   );
 };
 
-// --- COMPONENTE CÁMARA ---
+// --- COMPONENTE CÁMARA (CON SELECCIÓN MÚLTIPLE) ---
 const CameraView = ({ onClose, onUpload, theme }) => {
   const cameraInputRef = useRef(null);
   const videoInputRef = useRef(null);
@@ -1105,26 +988,31 @@ const CameraView = ({ onClose, onUpload, theme }) => {
     onUpload({ type: 'image', data: canvas.toDataURL('image/jpeg', 0.85) });
   };
 
+  // MANEJO DE ARCHIVOS MÚLTIPLES
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.type.startsWith('video/')) {
-        // CORRECCIÓN: Límite subido a 500MB
-        if (file.size > 500000000) { 
-            alert("⚠️ Video demasiado pesado (Máx 500MB). Intenta uno más corto."); 
-            e.target.value = ""; // Limpiar memoria
-            return; 
-        }
-        onUpload({ type: 'video', data: file });
-      } else {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const img = new Image(); 
-          img.onload = () => processImage(img); 
-          img.src = event.target.result; 
-        };
-        reader.readAsDataURL(file);
-      }
+    const files = e.target.files;
+    if (files && files.length > 0) {
+        // Convertimos FileList a Array para iterar
+        Array.from(files).forEach(file => {
+            if (file.type.startsWith('video/')) {
+                // Límite 500MB
+                if (file.size > 500000000) { 
+                    alert(`⚠️ El video ${file.name} es demasiado pesado (Máx 500MB).`); 
+                    return; 
+                }
+                onUpload({ type: 'video', data: file });
+            } else {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image(); 
+                    img.onload = () => processImage(img); 
+                    img.src = event.target.result; 
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        // Limpiamos el input para permitir subir los mismos archivos de nuevo si se desea
+        e.target.value = "";
     }
   };
 
@@ -1135,15 +1023,18 @@ const CameraView = ({ onClose, onUpload, theme }) => {
          <div className="flex justify-center mb-4"><div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-white border border-gray-200'}`}><Camera size={40} className={isDark ? 'text-white' : 'text-black'} /></div></div>
          <h2 className={`text-3xl font-serif font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Capturar</h2>
          <div className="grid grid-cols-2 gap-4">
+           {/* La cámara suele ser una por una, pero la galería ahora permite múltiples */}
            <button onClick={() => cameraInputRef.current.click()} className={`p-6 rounded-2xl flex flex-col items-center gap-2 border transition ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-gray-100 hover:bg-gray-50 shadow-sm'}`}><Camera size={32} className="text-yellow-500" /><span className="text-sm font-bold">Foto</span></button>
            <button onClick={() => videoInputRef.current.click()} className={`p-6 rounded-2xl flex flex-col items-center gap-2 border transition ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-gray-100 hover:bg-gray-50 shadow-sm'}`}><Video size={32} className="text-purple-500" /><span className="text-sm font-bold">Video</span></button>
-           <button onClick={() => galleryInputRef.current.click()} className={`col-span-2 p-4 rounded-xl flex items-center justify-center gap-2 border ${isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-100 text-gray-600 shadow-sm'}`}><Upload size={20} /> Galería</button>
+           <button onClick={() => galleryInputRef.current.click()} className={`col-span-2 p-4 rounded-xl flex items-center justify-center gap-2 border ${isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-100 text-gray-600 shadow-sm'}`}><Upload size={20} /> Galería (Múltiple)</button>
          </div>
        </div>
        <canvas ref={canvasRef} className="hidden" />
+       {/* Inputs ocultos */}
        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
        <input ref={videoInputRef} type="file" accept="video/*" capture="environment" className="hidden" onChange={handleFileSelect} />
-       <input ref={galleryInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
+       {/* AQUÍ AGREGAMOS 'multiple' PARA LA GALERÍA */}
+       <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileSelect} />
     </div>
   );
 };
@@ -1178,15 +1069,11 @@ const MediaViewer = ({ media, onClose }) => {
   );
 };
 
-// --- COMPONENTE POST CARD (AHORA CON TRADUCCIÓN) ---
+// --- COMPONENTE POST CARD ---
 const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment, onDeleteComment, onToggleLike, theme, onOpenMedia, usersList, language }) => {
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
-  
-  // Usamos el diccionario
   const text = TRANSLATIONS[language];
-  
-  // --- MODAL DE LIKES ---
   const [showLikesModal, setShowLikesModal] = useState(false);
 
   const handleSubmitComment = (e) => { e.preventDefault(); if (!commentText.trim()) return; onAddComment(post.id, commentText); setCommentText(''); setShowComments(true); };
@@ -1197,13 +1084,9 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
   const author = usersList?.find(u => u.deviceId === post.userId);
   const instagramHandle = author ? author.instagram : post.userInstagram;
 
-  const likedByUsers = post.likes && post.likes.length > 0 
-      ? usersList.filter(u => post.likes.includes(u.deviceId)) 
-      : [];
-
   return (
     <>
-    {/* MODAL DE LIKES */}
+    {/* MODAL DE LIKES (CORREGIDO PARA NO QUEDARSE CARGANDO) */}
     {showLikesModal && (
         <div className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-6 animate-in fade-in" onClick={() => setShowLikesModal(false)}>
             <div className={`w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
@@ -1212,20 +1095,23 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
                     <button onClick={() => setShowLikesModal(false)}><X size={20} className="text-gray-400"/></button>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
-                    {likedByUsers.length === 0 ? (
-                        <p className="text-center text-sm text-gray-500 py-4">Cargando...</p>
-                    ) : (
-                        likedByUsers.map((u, i) => (
+                    {/* Iteramos directamente sobre los IDs de likes para asegurar que siempre se muestre algo */}
+                    {post.likes && post.likes.map((likeId, i) => {
+                        const user = usersList.find(u => u.deviceId === likeId);
+                        const displayName = user ? user.originalName : "Invitado"; // Fallback name si no se encuentra
+                        const initial = user ? user.originalName.charAt(0).toUpperCase() : "?";
+                        
+                        return (
                             <div key={i} className="flex items-center gap-3 p-3 hover:bg-black/5 rounded-xl transition">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
-                                    {u.originalName.charAt(0).toUpperCase()}
+                                    {initial}
                                 </div>
                                 <span className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                                    {u.originalName}
+                                    {displayName}
                                 </span>
                             </div>
-                        ))
-                    )}
+                        );
+                    })}
                 </div>
             </div>
         </div>
@@ -1255,7 +1141,8 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
       >
         {looksLikeVideo(post.imageUrl) ? ( 
            <>
-             <video className="w-full h-auto max-h-[500px] object-cover" src={post.imageUrl} />
+             {/* playsInline añadido para intentar mostrar el frame en iOS */}
+             <video className="w-full h-auto max-h-[500px] object-cover" src={post.imageUrl} playsInline preload="metadata" />
              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition">
                 <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/30 text-white"><Maximize2 size={24} /></div>
              </div>
@@ -1308,7 +1195,6 @@ const ProfileView = ({ user, onLogout, posts, usersList, theme, toggleTheme, onK
   
   const [editInsta, setEditInsta] = useState(liveUser.instagram || '');
   const [savedMsg, setSavedMsg] = useState('');
-  
   const text = TRANSLATIONS[language];
 
   useEffect(() => {
@@ -1364,7 +1250,6 @@ const ProfileView = ({ user, onLogout, posts, usersList, theme, toggleTheme, onK
        
        {showQRModal && (<div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-6 animate-in fade-in cursor-pointer" onClick={() => setShowQRModal(false)}><button onClick={() => setShowQRModal(false)} className="absolute top-6 right-6 text-white p-3 bg-white/10 rounded-full hover:bg-white/20"><X size={24}/></button><div onClick={(e) => e.stopPropagation()} className="bg-white p-8 rounded-3xl shadow-[0_0_50px_rgba(255,255,255,0.2)] flex flex-col items-center relative"><button onClick={() => setShowQRModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800"><X size={20}/></button><h3 className="text-2xl font-bold text-gray-900 mb-6 font-serif">Escanea para unirte</h3><div className="border-2 border-gray-100 rounded-xl overflow-hidden"><QRCode value={appUrl} size={256} /></div><p className="mt-6 text-3xl font-mono font-bold text-slate-900 tracking-[0.2em]">{user.eventCode}</p></div></div>)}
        
-       {/* HEADER PERFIL (CON BANDERITA) */}
        <div className="flex justify-end gap-3 mb-4">
           <LanguageToggle language={language} toggleLanguage={toggleLanguage} isDark={isDark} />
           <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
@@ -1378,7 +1263,6 @@ const ProfileView = ({ user, onLogout, posts, usersList, theme, toggleTheme, onK
          <div className="flex justify-center mt-3"><span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${user.role === 'host' ? 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{user.role === 'host' ? text.host_badge : text.guest_badge}</span></div>
        </div>
 
-       {/* INSTAGRAM BOX */}
        <div className="glass-panel rounded-3xl p-6 mb-6 relative z-10">
            <div className="flex items-center gap-2 mb-3">
                <Instagram size={18} className="text-pink-500"/>
@@ -1414,11 +1298,8 @@ const ProfileView = ({ user, onLogout, posts, usersList, theme, toggleTheme, onK
          <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-2"><Users size={18} className="text-green-500"/><p className="text-[10px] font-bold text-green-500 uppercase tracking-widest">{text.guest_list} ({usersList.length})</p></div></div>
          <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
             {usersList.map((u, i) => {
-                // CORRECCIÓN CRÍTICA: Contar fotos si coincide ID de sesión O si coincide el NOMBRE
                 const postCount = posts.filter(p => {
-                    // 1. Coincidencia técnica (misma sesión)
                     if (p.userId === u.deviceId) return true;
-                    // 2. Coincidencia humana (mismo nombre, ignorando acentos)
                     if (p.userName && u.originalName) {
                         return normalizeName(p.userName) === normalizeName(u.originalName);
                     }
@@ -1434,7 +1315,6 @@ const ProfileView = ({ user, onLogout, posts, usersList, theme, toggleTheme, onK
                         </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            {/* CONTADOR DE FOTOS VISIBLE SIEMPRE */}
                             <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${postCount > 0 ? 'bg-green-500/10 border-green-500/20 text-green-600' : 'bg-gray-500/10 border-gray-500/20 text-gray-400'}`}>
                                 <ImageIcon size={10} className={postCount > 0 ? "text-green-500" : "text-gray-400"}/>
                                 <span className="text-xs font-bold">{postCount} {postCount === 1 ? 'foto' : 'fotos'}</span>
@@ -1464,18 +1344,15 @@ export default function App() {
   const [view, setView] = useState('feed'); 
   const [loading, setLoading] = useState(true);
   
-  // -- NUEVO ESTADO: CONTROL DE VISTA (LISTA vs GRID) --
   const [feedLayout, setFeedLayout] = useState('grid'); 
-
-  // -- ESTADO DEL EVENTO EN TIEMPO REAL --
   const [eventData, setEventData] = useState(null);
   const lastMessageRef = useRef('');
 
-  // -- ESTADO PARA LA COLA DE SUBIDA --
+  // Estados de subida
   const [uploadQueue, setUploadQueue] = useState([]); 
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  // NUEVO ESTADO: Progreso de subida (0 a 100)
+  // --- BARRA DE PROGRESO ---
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const [showLanding, setShowLanding] = useState(true);
@@ -1484,20 +1361,17 @@ export default function App() {
   
   const [showIntro, setShowIntro] = useState(false);
 
-  // --- NUEVOS ESTADOS PARA LOS MODALES PERSONALIZADOS ---
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [announcementValue, setAnnouncementValue] = useState('');
 
-  // -- TEMA (Dark/Light) --
   const [theme, setTheme] = useState(() => {
       const savedTheme = localStorage.getItem(THEME_KEY);
       return savedTheme ? savedTheme : 'dark';
   });
 
-  // --- ESTADO DE IDIOMA ---
-  const [language, setLanguage] = useState('es'); // 'es' o 'en'
+  const [language, setLanguage] = useState('es'); 
 
   const toggleTheme = () => {
       setTheme(prev => {
@@ -1514,7 +1388,6 @@ export default function App() {
   const isDark = theme === 'dark';
   const text = TRANSLATIONS[language];
 
-  // --- SONIDO DE NOTIFICACIÓN ---
   const playNotificationSound = () => {
       try {
           const audio = new Audio("https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3");
@@ -1525,7 +1398,6 @@ export default function App() {
       }
   };
 
-  // --- DETECTOR DE CONEXIÓN A INTERNET ---
   useEffect(() => {
       const handleOnline = () => setIsOnline(true);
       const handleOffline = () => setIsOnline(false);
@@ -1537,7 +1409,7 @@ export default function App() {
       };
   }, []);
 
-  // --- PROCESADOR DE LA COLA DE SUBIDA (ACTUALIZADO CON PROGRESS BAR) ---
+  // --- PROCESADOR DE COLA CON BARRA DE PROGRESO ---
   useEffect(() => {
       if (!isOnline || isProcessingQueue || uploadQueue.length === 0) return;
       
@@ -1546,9 +1418,8 @@ export default function App() {
 
       const processItem = async () => {
           setIsProcessingQueue(true);
-          setUploadProgress(0); // Reiniciar barra
+          setUploadProgress(0); // Reiniciar al empezar
           
-          // Marcar como subiendo
           setUploadQueue(prev => prev.map(i => i.id === itemToUpload.id ? { ...i, status: 'uploading' } : i));
 
           try {
@@ -1560,11 +1431,10 @@ export default function App() {
               const fileName = `${timestamp}_${Math.floor(Math.random()*1000)}.${ext}`;
               const storageRef = ref(storage, `events/${currentUser.eventCode}/${folder}/${fileName}`);
 
-              // LÓGICA DE SUBIDA CON PROGRESO (Videos o Fotos pesadas)
+              // Lógica de subida resumible (para tener % real)
               if (type === 'video') {
                   const uploadTask = uploadBytesResumable(storageRef, itemToUpload.data);
                   
-                  // Promesa para esperar a que termine el Task
                   await new Promise((resolve, reject) => {
                       uploadTask.on('state_changed', 
                           (snapshot) => {
@@ -1575,13 +1445,11 @@ export default function App() {
                           () => resolve()
                       );
                   });
-                  
                   downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
 
               } else {
-                  // Para fotos (base64 string) usamos uploadString que es más directo
-                  // Simulamos un progreso rápido
-                  setUploadProgress(10);
+                  // Para fotos (base64) simulamos progreso rápido
+                  setUploadProgress(20);
                   const snapshot = await uploadString(storageRef, itemToUpload.data, 'data_url');
                   setUploadProgress(100);
                   downloadUrl = await getDownloadURL(snapshot.ref);
@@ -1599,12 +1467,11 @@ export default function App() {
                 likes: [] 
               });
 
-              // Éxito: Eliminar de la cola
               setUploadQueue(prev => prev.filter(i => i.id !== itemToUpload.id));
-              setUploadProgress(0); // Limpiar barra al final
+              setUploadProgress(0); // Ocultar al terminar
 
           } catch (error) {
-              console.error("Error subiendo (background):", error);
+              console.error("Error subiendo:", error);
               if (!navigator.onLine) {
                  setUploadQueue(prev => prev.map(i => i.id === itemToUpload.id ? { ...i, status: 'waiting_connection' } : i));
               } else {
@@ -1685,18 +1552,15 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
     
-    // Escuchar posts
     const unsubP = onSnapshot(query(collection(db, 'events', currentUser.eventCode, 'posts')), s => {
       setPosts(s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0)));
     });
     
-    // Escuchar usuarios
     const unsubU = onSnapshot(collection(db, 'events', currentUser.eventCode, 'users'), s => {
        setUsersList(s.docs.map(d => ({ id: d.id, ...d.data() }))); 
        setPeopleCount(s.size);
     });
 
-    // Escuchar METADATA DEL EVENTO
     const unsubE = onSnapshot(doc(db, 'events', currentUser.eventCode), (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -1739,7 +1603,6 @@ export default function App() {
     }
   };
 
-  // --- FUNCIONES MODIFICADAS PARA USAR LOS NUEVOS MODALES ---
   const openEditNameModal = () => {
       setEditNameValue(eventData?.eventName || currentUser.eventName);
       setShowEditNameModal(true);
@@ -1776,7 +1639,6 @@ export default function App() {
       }
       setShowAnnouncementModal(false);
   };
-  // ---------------------------------------------------------
 
   const handleUpdateInstagram = async (newInsta) => {
       try {
@@ -1973,20 +1835,20 @@ export default function App() {
           </div>
       )}
 
-      {/* --- BARRA DE ESTADO DE SUBIDA (AHORA CON TEMA Y PROGRESO) --- */}
+      {/* --- BARRA DE ESTADO DE SUBIDA CON PROGRESO Y TEMA ADAPTABLE --- */}
       {uploadQueue.length > 0 && (
          <div className="absolute top-20 left-0 right-0 z-40 px-4 flex justify-center pointer-events-none animate-in slide-in-from-top-2">
-            <div className={`backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border flex flex-col gap-2 min-w-[200px] transition-colors ${
+            <div className={`backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border flex flex-col gap-2 min-w-[200px] transition-colors duration-500 ${
                 isDark 
                 ? 'bg-slate-900/95 border-slate-700 text-white' 
                 : 'bg-white/95 border-gray-200 text-gray-900 shadow-2xl'
             }`}>
                <div className="flex items-center gap-3">
-                   { !isOnline ? <WifiOff size={16} className="animate-pulse text-red-500" /> : <RefreshCw size={16} className={`animate-spin ${isDark ? 'text-white' : 'text-black'}`} /> }
+                   { !isOnline ? <WifiOff size={16} className="animate-pulse text-red-500" /> : <RefreshCw size={16} className={`animate-spin ${isDark ? 'text-white' : 'text-indigo-600'}`} /> }
                    <span className="text-xs font-bold">
                       { !isOnline 
                         ? `${text.waiting_net} (${uploadQueue.length})` 
-                        : `${text.uploading} ${uploadQueue.length}...`
+                        : `${text.uploading} ${uploadQueue.length}... (${Math.round(uploadProgress)}%)`
                       }
                    </span>
                </div>
@@ -1996,7 +1858,7 @@ export default function App() {
                    <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
                        <div 
                            className="h-full bg-green-500 rounded-full transition-all duration-300 ease-out" 
-                           style={{ width: `${Math.max(5, uploadProgress)}%` }} // Minimo 5% para que se vea algo
+                           style={{ width: `${Math.max(5, uploadProgress)}%` }} 
                        ></div>
                    </div>
                )}
@@ -2129,10 +1991,17 @@ export default function App() {
                             >
                                 {isVid ? (
                                     <>
-                                        <video src={p.imageUrl} className="w-full h-full object-cover opacity-80" muted preload="metadata" />
-                                        <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-full h-full bg-black/40 flex items-center justify-center absolute z-10">
                                             <Play size={24} className="text-white/80 drop-shadow-md" fill="white" />
                                         </div>
+                                        {/* MEJORA EN VIDEO: playsInline para iOS y fondo negro elegante */}
+                                        <video 
+                                            src={p.imageUrl} 
+                                            className="w-full h-full object-cover opacity-80" 
+                                            muted 
+                                            playsInline 
+                                            preload="metadata"
+                                        />
                                     </>
                                 ) : (
                                     <img src={p.imageUrl} alt="grid-thumb" className="w-full h-full object-cover transition duration-300 group-hover:scale-110" loading="lazy" />
