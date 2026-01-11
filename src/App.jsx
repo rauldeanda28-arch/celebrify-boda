@@ -165,6 +165,123 @@ const TRANSLATIONS = {
     lbl_ann_msg: "Mensaje para los invitados",
     ph_ann_msg: "Escribe aquí... (déjalo vacío para borrar)",
     btn_post: "Publicar"
+  },
+  // --- SECCIÓN AÑADIDA: TRADUCCIÓN AL INGLÉS ---
+  en: {
+    // Landing
+    nav_login: "Login",
+    hero_badge: "The App for your Events",
+    hero_title_1: "Your memories,",
+    hero_title_2: "in one place.",
+    hero_desc: "The ultimate platform for your events. Forget chasing guests for photos; with Clebrify, they capture moments in real-time.",
+    btn_create: "Create Event",
+    btn_code: "I have a Code",
+    features_title: "Everything you need",
+    
+    // Testimonios
+    test_title: "What our users say",
+    test_1_name: "Ana & Carlos",
+    test_1_role: "Newlyweds",
+    test_1_text: "It was amazing to wake up the next day and see hundreds of photos and videos we didn't know existed. Best wedding decision!",
+    test_2_name: "Mariana L.",
+    test_2_role: "Event Planner",
+    test_2_text: "My clients love the privacy. It's much safer than an Instagram hashtag and the video quality is impeccable.",
+    test_3_name: "George D.",
+    test_3_role: "30th Birthday",
+    test_3_text: "The best part was my friends didn't need to download anything. Scanned the QR and boom, everyone uploading photos instantly.",
+
+    // Final CTA
+    cta_title: "Ready for your next event?",
+    cta_desc: "Forget asking for photos tomorrow. Create your shared album today and let your guests capture the magic.",
+    cta_btn: "Create my Event",
+
+    // Features Landing
+    ft_1_title: "100% Private", ft_1_desc: "Your photos aren't public.", ft_1_det: "Only guests with the unique code can view and upload content.",
+    ft_2_title: "HD Video", ft_2_desc: "Upload videos of best moments.", ft_2_det: "Full support for high definition videos.",
+    ft_3_title: "Easy Access", ft_3_desc: "Print QR and go.", ft_3_det: "Guests just scan to join.",
+    ft_4_title: "ZIP Album", ft_4_desc: "Download everything at the end.", ft_4_det: "Download all photos and videos in a single file.",
+    ft_5_title: "Connect", ft_5_desc: "Share your Instagram.", ft_5_det: "Connect with other guests by sharing your profile.",
+    ft_6_title: "Announcements", ft_6_desc: "Host messages.", ft_6_det: "Important alerts with sound for all guests.",
+    check_1: "No app download", check_2: "Original Quality", footer_rights: "All rights reserved.",
+
+    // Login & Create Forms
+    welcome_title: "Welcome",
+    welcome_desc_join: "Enter the code to join the party",
+    welcome_desc_create: "Request your private event",
+    tab_join: "LOGIN",
+    tab_create: "REQUEST EVENT",
+    
+    // Join Form
+    lbl_code: "EVENT CODE",
+    lbl_name: "YOUR NAME",
+    lbl_lastname: "YOUR LAST NAME",
+    chk_admin: "I'm Admin / Host",
+    ph_admin_pin: "ADMIN PIN",
+    btn_enter: "Enter",
+    
+    // Create Form
+    lbl_event_name: "EVENT NAME *",
+    ph_event_name: "Ana & Luis Wedding",
+    lbl_host_1: "HOST 1 *",
+    lbl_lastname_p: "LAST NAME (P) *",
+    lbl_lastname_m: "LAST NAME (M) *",
+    lbl_email: "EMAIL *",
+    lbl_phone: "PHONE / WHATSAPP *",
+    chk_host_2: "Add another host",
+    title_host_2: "Second Host Details",
+    lbl_host_2: "HOST 2 *",
+    lbl_email_2: "EMAIL (2ND HOST) *",
+    lbl_phone_2: "PHONE (2ND HOST) *",
+    btn_request: "Request Event",
+    
+    // Waiting Screen
+    req_sent: "Request Sent",
+    req_desc: "We received your request. We are verifying your data.",
+    req_warn: "Please do not close this screen.",
+    req_cancel: "Cancel and return",
+    
+    // Approved Screen
+    approved: "Approved!",
+    approved_desc: "Your event is ready to use.",
+    code_guest: "Guest Code",
+    pin_admin: "Admin PIN (Private)",
+    btn_enter_now: "Enter now",
+
+    // Profile & App
+    profile_title: "My Profile",
+    host_badge: "Host",
+    guest_badge: "Guest",
+    connect_insta: "Connect Instagram",
+    save_btn: "Save",
+    saved_msg: "Saved!",
+    invite_friends: "Invite friends",
+    code_copied: "Code copied!",
+    guest_list: "Guest List",
+    kick_guest: "Kick guest",
+    download_album: "Download Album",
+    downloading: "Downloading...",
+    master_pin: "Your Master PIN",
+    logout: "Log Out",
+    need_help: "Need help?",
+    
+    // Feed & Comments
+    no_photos: "No photos yet",
+    uploading: "Uploading",
+    waiting_net: "Waiting for signal",
+    host_msg_title: "Host Message",
+    ph_comment: "Comment...",
+    btn_send: "Send",
+    likes_list: "Liked by...",
+    likes_count: "Likes",
+
+    // Modals
+    modal_edit_title: "Edit event name",
+    lbl_new_name: "New name",
+    btn_cancel: "Cancel",
+    modal_ann_title: "Post Announcement",
+    lbl_ann_msg: "Message for guests",
+    ph_ann_msg: "Write here... (leave empty to clear)",
+    btn_post: "Post"
   }
 };
 
@@ -219,7 +336,7 @@ const GlobalStyles = ({ theme }) => (
       
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .animate-enter { animation: fadeIn 0.8s ease-out forwards; }
-    
+      
     @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .animate-slide-down { animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   `}</style>
@@ -1802,8 +1919,8 @@ export default function App() {
                   </div>
 
                   <div className="flex gap-3 mt-6">
-                     <button onClick={() => setShowEditNameModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition border ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>{text.btn_cancel}</button>
-                     <button onClick={submitEditName} disabled={!editNameValue.trim()} className="flex-1 btn-primary py-3 rounded-xl shadow-lg disabled:opacity-50">{text.save_btn}</button>
+                      <button onClick={() => setShowEditNameModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition border ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>{text.btn_cancel}</button>
+                      <button onClick={submitEditName} disabled={!editNameValue.trim()} className="flex-1 btn-primary py-3 rounded-xl shadow-lg disabled:opacity-50">{text.save_btn}</button>
                   </div>
               </div>
           </div>
@@ -1828,8 +1945,8 @@ export default function App() {
                   </div>
 
                   <div className="flex gap-3 mt-6">
-                     <button onClick={() => setShowAnnouncementModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition border ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>{text.btn_cancel}</button>
-                     <button onClick={submitAnnouncement} className="flex-1 btn-primary py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Megaphone size={16}/> {text.btn_post}</button>
+                      <button onClick={() => setShowAnnouncementModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition border ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>{text.btn_cancel}</button>
+                      <button onClick={submitAnnouncement} className="flex-1 btn-primary py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Megaphone size={16}/> {text.btn_post}</button>
                   </div>
               </div>
           </div>
