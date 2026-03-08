@@ -1202,7 +1202,6 @@ const MediaViewer = ({ media, onClose }) => {
 // --- COMPONENTE CREADOR DE INVITACIONES (DISEÑO PROFESIONAL CON COLORES ORIGINALES) ---
 // --- COMPONENTE CREADOR DE INVITACIONES (CORREGIDO Y SINCRONIZADO) ---
 const InvitationModal = ({ user, eventData, onClose, theme }) => {
-  // Cargamos los datos guardados en Firebase, o usamos valores por defecto si no hay nada
   const config = eventData?.invitationConfig || {};
 
   const [headerText, setHeaderText] = useState(config.headerText || "ESTÁS INVITADO A");
@@ -1214,53 +1213,36 @@ const InvitationModal = ({ user, eventData, onClose, theme }) => {
   const [accentColor, setAccentColor] = useState(config.accentColor || '#D4AF37');
   const [fontFamily, setFontFamily] = useState(config.fontFamily || "'Playfair Display', serif");
   
-  const [bgImage, setBgImage] = useState(config.bgImage || null); 
-  // Ajuste de límites del QR para que no se salga de la tarjeta (x: de -100 a 100)
-  const [qrPos, setQrPos] = useState(config.qrPos || { x: 50, y: -150 }); 
+  // --- Recuperamos los controles de posición ---
+  const [qrPos, setQrPos] = useState(config.qrPos || { x: 0, y: 110 }); // Centrado por defecto abajo
+  const [qrScale, setQrScale] = useState(config.qrScale || 1);
   const [qrBgVisible, setQrBgVisible] = useState(config.qrBgVisible !== undefined ? config.qrBgVisible : true);
 
   const inviteRef = useRef(null);
-  const fileInputRef = useRef(null);
   const isHost = user.role === 'host';
   const appUrl = `${window.location.origin}?code=${user.eventCode}`;
 
-  // FUNCIÓN PARA GUARDAR EN LA NUBE (Solo para el anfitrión)
-  const saveDesignToFirebase = async () => {
+  const saveDesign = async () => {
     if (!isHost) return;
     try {
       const eventRef = doc(db, 'events', user.eventCode);
       await updateDoc(eventRef, {
         invitationConfig: {
           headerText, mainTitle, infoText, bgColor, textColor, 
-          accentColor, fontFamily, bgImage, qrPos, qrBgVisible
+          accentColor, fontFamily, qrPos, qrScale, qrBgVisible
         }
       });
-      alert("✅ ¡Diseño guardado para todos los invitados!");
+      alert("✅ ¡Diseño y posición sincronizados!");
     } catch (e) {
-      console.error("Error al guardar diseño:", e);
-      alert("Error al sincronizar");
-    }
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => setBgImage(event.target.result);
-      reader.readAsDataURL(file);
-      setTextColor('#FFFFFF');
-      setAccentColor('#FFFFFF');
+      console.error(e);
+      alert("Error al sincronizar.");
     }
   };
 
   const downloadInvite = async () => {
     const html2canvas = (await import('html2canvas')).default;
     if (inviteRef.current) {
-      const canvas = await html2canvas(inviteRef.current, {
-        scale: 3, 
-        useCORS: true,
-        backgroundColor: bgColor,
-      });
+      const canvas = await html2canvas(inviteRef.current, { scale: 3, backgroundColor: bgColor });
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
@@ -1275,39 +1257,59 @@ const InvitationModal = ({ user, eventData, onClose, theme }) => {
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm mx-auto px-6 pt-10 pb-40">
         
         <p className="text-white/40 text-[10px] text-center mb-6 uppercase tracking-widest font-bold">
-          {isHost ? "Diseña tu Invitación" : "Invitación del Evento"}
+          {isHost ? "Diseñador Pro de Invitación" : "Invitación del Evento"}
         </p>
 
         {isHost && (
           <div className="glass-panel p-5 rounded-3xl space-y-5 border border-white/10 mb-8 shadow-2xl">
+              
               <div className="space-y-3">
                   <input type="text" value={headerText} onChange={(e) => setHeaderText(e.target.value.toUpperCase())} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Encabezado" />
-                  <input type="text" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Nombre del Evento" />
-                  <input type="text" value={infoText} onChange={(e) => setInfoText(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Información" />
+                  <input type="text" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Evento" />
+                  <input type="text" value={infoText} onChange={(e) => setInfoText(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Lugar / Hora" />
               </div>
 
+              {/* --- NUEVA SECCIÓN: ACOMODAR QR --- */}
               <div className="space-y-4 pt-4 border-t border-white/5">
                   <p className="text-yellow-500 text-[9px] font-bold uppercase text-center tracking-widest">Acomodar QR</p>
                   <div className="space-y-3">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[8px] text-gray-400 uppercase flex justify-between">Izquierda / Derecha</label>
-                        {/* Límites ajustados de -90 a 90 para que no se salga nunca */}
-                        <input type="range" min="-90" max="90" value={qrPos.x} onChange={(e) => setQrPos({...qrPos, x: parseInt(e.target.value)})} className="w-full accent-yellow-500" />
+                        <label className="text-[8px] text-gray-400 uppercase flex justify-between">Izquierda / Derecha <span>{qrPos.x}px</span></label>
+                        <input type="range" min="-100" max="100" value={qrPos.x} onChange={(e) => setQrPos({...qrPos, x: parseInt(e.target.value)})} className="w-full accent-yellow-500" />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[8px] text-gray-400 uppercase flex justify-between">Arriba / Abajo</label>
-                        <input type="range" min="-200" max="200" value={qrPos.y} onChange={(e) => setQrPos({...qrPos, y: parseInt(e.target.value)})} className="w-full accent-yellow-500" />
+                        <label className="text-[8px] text-gray-400 uppercase flex justify-between">Arriba / Abajo <span>{qrPos.y}px</span></label>
+                        <input type="range" min="-220" max="220" value={qrPos.y} onChange={(e) => setQrPos({...qrPos, y: parseInt(e.target.value)})} className="w-full accent-yellow-500" />
                       </div>
                   </div>
+                  <button onClick={() => setQrBgVisible(!qrBgVisible)} className="w-full py-2 bg-white/5 border border-white/10 rounded-lg text-[8px] text-white font-bold uppercase">
+                      {qrBgVisible ? "Quitar fondo blanco al QR" : "Poner fondo blanco al QR"}
+                  </button>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                  <button onClick={saveDesignToFirebase} className="flex-1 py-3 bg-green-600 rounded-xl text-white text-[10px] font-bold uppercase flex items-center justify-center gap-2">
-                    <Save size={14}/> Guardar en la Nube
-                  </button>
-                  <button onClick={() => fileInputRef.current.click()} className="p-3 bg-white/10 rounded-xl text-white"><ImageIcon size={16}/></button>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              {/* Colores y Fuentes */}
+              <div className="pt-4 border-t border-white/5 space-y-3">
+                <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase">Fondo</span>
+                    <div className="flex gap-2">
+                        {['#FDFCF8', '#000000', '#1e293b', '#4c1d95', '#166534'].map(c => (
+                            <button key={c} onClick={() => setBgColor(c)} className={`w-4 h-4 rounded-full border ${bgColor === c ? 'border-yellow-500 scale-110' : 'border-white/20'}`} style={{backgroundColor: c}} />
+                        ))}
+                    </div>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase">Letra</span>
+                    <div className="flex gap-2">
+                        {['#2D2D2D', '#FFFFFF', '#D4AF37', '#60a5fa', '#f87171'].map(c => (
+                            <button key={c} onClick={() => { setTextColor(c); setAccentColor(c); }} className={`w-4 h-4 rounded-full border ${textColor === c ? 'border-yellow-500 scale-110' : 'border-white/20'}`} style={{backgroundColor: c}} />
+                        ))}
+                    </div>
+                </div>
               </div>
+
+              <button onClick={saveDesign} className="w-full py-3 bg-green-600 rounded-xl text-white text-[10px] font-bold uppercase flex items-center justify-center gap-2 shadow-lg active:scale-95 transition">
+                <Save size={14}/> Sincronizar Posición y Diseño
+              </button>
           </div>
         )}
 
@@ -1316,44 +1318,38 @@ const InvitationModal = ({ user, eventData, onClose, theme }) => {
             <div 
               ref={inviteRef}
               className="w-[310px] h-[520px] relative flex flex-col items-start justify-center p-8 text-left"
-              style={{ 
-                backgroundColor: bgColor, 
-                color: textColor, 
-                fontFamily: fontFamily,
-                backgroundImage: bgImage ? `url(${bgImage})` : 'none',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
+              style={{ backgroundColor: bgColor, color: textColor, fontFamily: fontFamily }}
             >
-              {bgImage && <div className="absolute inset-0 bg-black/20 z-0"></div>}
-
               <div className="relative z-10 space-y-6 w-full mt-10">
                   <div className="space-y-1">
                     <p className="text-[9px] font-bold tracking-[0.2em] opacity-70 mb-2 uppercase" style={{color: accentColor}}>{headerText}</p>
-                    <h2 className="text-3xl font-bold uppercase leading-tight tracking-tight break-words">{mainTitle}</h2>
+                    <h2 className="text-3xl font-bold uppercase leading-tight tracking-tight">{mainTitle}</h2>
                     <div className="w-12 h-[2px] mt-3" style={{backgroundColor: accentColor}}></div>
                   </div>
                   <p className="text-[11px] font-medium tracking-wide uppercase border-l-2 border-current pl-4 py-1">{infoText}</p>
               </div>
 
-              {/* QR STICKER (Posicionamiento mejorado) */}
+              {/* QR CON POSICIÓN PERSONALIZADA */}
               <div 
-                className="absolute z-20 flex flex-col items-center"
+                className="absolute z-20 flex flex-col items-center gap-1"
                 style={{ 
-                    top: '50%', left: '50%',
-                    transform: `translate(${qrPos.x}px, ${qrPos.y}px)` 
+                  top: '50%', 
+                  left: '50%', 
+                  transform: `translate(${qrPos.x}px, ${qrPos.y}px)` 
                 }}
               >
-                  <div className={`p-3 rounded-2xl shadow-xl ${qrBgVisible ? 'bg-white' : 'bg-transparent'}`}>
+                  <div className={`p-3 rounded-2xl shadow-xl transition-all ${qrBgVisible ? 'bg-white' : 'bg-transparent'}`}>
                       <QRCode value={appUrl} size={100} bgColor="transparent" fgColor={qrBgVisible ? '#000000' : textColor} />
                   </div>
-                  <p className="text-[12px] font-mono font-bold mt-2">{user.eventCode}</p>
+                  <p className="text-[12px] font-mono font-bold tracking-widest">{user.eventCode}</p>
               </div>
+
+              <p className="absolute bottom-8 left-8 text-[7px] opacity-30 tracking-[0.4em] uppercase font-bold">Clebrify . Moments Forever</p>
             </div>
         </div>
 
         <button onClick={downloadInvite} className="w-full btn-primary px-8 py-4 rounded-2xl flex items-center justify-center gap-3 font-bold active:scale-95 transition">
-            <Download size={20}/> Descargar para WhatsApp
+            <Download size={20}/> Guardar Invitación en Galería
         </button>
 
       </div>
