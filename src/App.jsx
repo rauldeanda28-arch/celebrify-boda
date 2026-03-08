@@ -381,67 +381,72 @@ const LanguageToggle = ({ language, toggleLanguage, isDark }) => (
   </button>
 );
 
-// --- PANTALLA DE INSTRUCCIONES (ONBOARDING) ---
+// --- PANTALLA DE INSTRUCCIONES MEJORADA (MÁS COMPACTA) ---
 const OnboardingScreen = ({ onFinish }) => {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#0f172a] text-white flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 overflow-y-auto">
-      <div className="w-full max-w-md space-y-6 text-center my-auto">
-        
-        <div className="mb-4">
-           <img src="/logo.svg" alt="Logo" className="w-24 h-24 mx-auto mb-4 rounded-3xl shadow-2xl shadow-yellow-500/20" />
-           <h1 className="text-3xl font-serif font-bold text-yellow-500">¡Hola! 👋</h1>
-           <p className="text-gray-400 mt-2 text-sm">Bienvenido a Clebrify. Sigue estos pasos para la mejor experiencia.</p>
+    <div className="fixed inset-0 z-[60] bg-[#0f172a] text-white flex flex-col animate-in fade-in duration-500">
+      
+      {/* Contenido con Scroll Independiente */}
+      <div className="flex-1 overflow-y-auto p-6 pb-32 custom-scrollbar">
+        <div className="w-full max-w-md mx-auto space-y-6 text-center">
+          
+          <div className="mb-4 mt-4">
+              <img src="/logo.svg" alt="Logo" className="w-16 h-16 mx-auto mb-3 rounded-2xl shadow-xl shadow-yellow-500/10" />
+              <h1 className="text-2xl font-serif font-bold text-yellow-500">¡Bienvenido! 👋</h1>
+              <p className="text-gray-400 mt-1 text-xs">Sigue estos pasos para la mejor experiencia.</p>
+          </div>
+
+          <div className="space-y-4 text-left">
+              {/* PASO 1: INSTALAR */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex gap-4">
+                <div className="bg-yellow-500/20 p-2 rounded-xl h-fit text-yellow-500 shrink-0"><Smartphone size={20}/></div>
+                <div>
+                    <h3 className="font-bold text-md text-white">1. Instala la App</h3>
+                    {isIOS ? (
+                       <p className="text-xs text-gray-300 mt-1">
+                          Pulsa <Share size={14} className="inline text-blue-400"/> luego <PlusSquare size={14} className="inline text-white"/> <b>"Agregar a Inicio"</b>.
+                       </p>
+                    ) : (
+                       <p className="text-xs text-gray-300 mt-1">
+                          Pulsa los 3 puntos y selecciona <b>"Instalar aplicación"</b>.
+                       </p>
+                    )}
+                </div>
+              </div>
+
+              {/* PASO 2: REGISTRO */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex gap-4">
+                <div className="bg-blue-500/20 p-2 rounded-xl h-fit text-blue-400 shrink-0"><User size={20}/></div>
+                <div>
+                    <h3 className="font-bold text-md text-white">2. Tu Nombre</h3>
+                    <p className="text-xs text-gray-400 mt-1">Regístrate y usa el código del evento.</p>
+                </div>
+              </div>
+
+              {/* PASO 3: FOTOS */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex gap-4">
+                <div className="bg-purple-500/20 p-2 rounded-xl h-fit text-purple-400 shrink-0"><Camera size={20}/></div>
+                <div>
+                    <h3 className="font-bold text-md text-white">3. ¡Captura!</h3>
+                    <p className="text-xs text-gray-400 mt-1">Sube fotos y videos en tiempo real.</p>
+                </div>
+              </div>
+          </div>
         </div>
+      </div>
 
-        <div className="space-y-4 text-left bg-white/5 p-6 rounded-2xl border border-white/10">
-           {/* PASO 1: INSTALAR */}
-           <div className="flex gap-4">
-              <div className="bg-yellow-500/20 p-3 rounded-xl h-fit text-yellow-500 flex-shrink-0"><Smartphone size={24}/></div>
-              <div>
-                 <h3 className="font-bold text-lg mb-1 text-white">1. Instala la App</h3>
-                 {isIOS ? (
-                    <div className="text-sm text-gray-300 leading-relaxed space-y-2">
-                       <p>Para verla en pantalla completa:</p>
-                       <p>1. Pulsa el botón <span className="font-bold text-white"><Share size={14} className="inline"/> Compartir</span> en la barra inferior.</p>
-                       <p>2. Desliza hacia abajo y selecciona <span className="font-bold text-white"><PlusSquare size={14} className="inline"/> Agregar a Inicio</span>.</p>
-                    </div>
-                 ) : (
-                    <p className="text-sm text-gray-300 leading-relaxed">
-                       Si usas Chrome, pulsa el menú de 3 puntos arriba y selecciona <span className="text-white font-bold">"Instalar aplicación"</span> o "Agregar a la pantalla principal".
-                    </p>
-                 )}
-              </div>
-           </div>
-
-           {/* PASO 2: REGISTRO */}
-           <div className="flex gap-4 pt-4 border-t border-white/5">
-              <div className="bg-blue-500/20 p-3 rounded-xl h-fit text-blue-400 flex-shrink-0"><User size={24}/></div>
-              <div>
-                 <h3 className="font-bold text-lg mb-1 text-white">2. Tu Nombre</h3>
-                 <p className="text-sm text-gray-400">Ingresa tu nombre y el código del evento para unirte a la fiesta.</p>
-              </div>
-           </div>
-
-           {/* PASO 3: FOTOS */}
-           <div className="flex gap-4 pt-4 border-t border-white/5">
-              <div className="bg-purple-500/20 p-3 rounded-xl h-fit text-purple-400 flex-shrink-0"><Camera size={24}/></div>
-              <div>
-                 <h3 className="font-bold text-lg mb-1 text-white">3. ¡Captura!</h3>
-                 <p className="text-sm text-gray-400">Toma fotos y videos. Todos los invitados verán los momentos en tiempo real.</p>
-              </div>
-           </div>
-        </div>
-
+      {/* Botón FIJO al fondo con degradado para que no tape el texto bruscamente */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/90 to-transparent pt-10">
         <button 
           onClick={onFinish}
-          className="w-full btn-primary py-4 rounded-xl text-lg font-bold shadow-lg shadow-yellow-500/20 animate-enter"
+          className="w-full max-w-md mx-auto block btn-primary py-4 rounded-xl text-lg font-bold shadow-xl shadow-yellow-500/20 active:scale-95 transition"
         >
           ¡Entendido, vamos! 🚀
         </button>
-
       </div>
+
     </div>
   );
 };
