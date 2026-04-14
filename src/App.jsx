@@ -472,9 +472,89 @@ const BannedScreen = ({ onTryAdmin }) => (
   </div>
 );
 
+// --- COMPONENTE TÉRMINOS Y CONDICIONES ---
+const TermsModal = ({ onClose, theme }) => {
+  const isDark = theme === 'dark';
+  return (
+    <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-6 animate-in fade-in" onClick={onClose}>
+      <div className={`w-full max-w-md max-h-[85vh] overflow-y-auto custom-scrollbar glass-panel rounded-3xl p-6 relative ${isDark ? 'text-white' : 'text-gray-900'}`} onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20}/></button>
+        <h3 className="font-bold font-serif text-xl mb-6 text-center">Términos y Condiciones</h3>
+        
+        <div className={`space-y-5 text-xs leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">1. Privacidad y Acceso</h4>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Clebrify opera mediante álbumes privados asociados a un código único de evento.</li>
+              <li>El acceso está restringido únicamente a usuarios que cuenten con dicho código.</li>
+              <li>El anfitrión del evento tiene control total sobre la gestión de invitados, incluyendo la posibilidad de eliminar usuarios o restringir su acceso en cualquier momento.</li>
+              <li>Los datos y archivos se almacenan temporalmente en infraestructura segura proporcionada por servicios de terceros como Firebase, con el único propósito de garantizar el funcionamiento de la plataforma.</li>
+              <li>Clebrify no vende, comparte ni utiliza el contenido de los usuarios para fines distintos a la operación del servicio.</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">2. Uso Aceptable</h4>
+            <p>Los usuarios se comprometen a no publicar contenido que sea:</p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Ilegal, ofensivo o discriminatorio</li>
+              <li>Violento o explícito</li>
+              <li>Que infrinja derechos de autor o derechos de terceros</li>
+            </ul>
+            <p className="mt-1">Clebrify se reserva el derecho de eliminar contenido y restringir accesos en caso de incumplimiento.</p>
+          </div>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">3. Propiedad del Contenido</h4>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Los usuarios conservan la propiedad de los archivos que suben a la plataforma.</li>
+              <li>Clebrify actúa exclusivamente como intermediario tecnológico para el almacenamiento y visualización del contenido, sin reclamar derechos sobre el mismo.</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">4. Eliminación de Contenido</h4>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Clebrify se reserva el derecho de eliminar eventos, archivos o cuentas tras un periodo determinado o por razones operativas, sin previo aviso.</li>
+              <li>No se garantiza la disponibilidad permanente del contenido almacenado.</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">5. Responsabilidad del Usuario</h4>
+            <p>El usuario es responsable de:</p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Contar con el consentimiento de las personas que aparecen en el contenido</li>
+              <li>El uso adecuado de la plataforma</li>
+              <li>El manejo del código de acceso del evento</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">6. Limitación de Responsabilidad</h4>
+            <p>Clebrify proporciona el servicio “tal cual” y no garantiza disponibilidad continua, libre de errores o interrupciones. No nos hacemos responsables por:</p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Pérdida de archivos</li>
+              <li>Uso indebido por parte de usuarios</li>
+              <li>Contenido generado por terceros</li>
+              <li>Fallas en servicios externos (ej. Firebase), conectividad a internet o redes Wi-Fi. </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">7. Servicios de Pago</h4>
+            <p>Algunas funcionalidades pueden estar sujetas a pago. Las condiciones específicas serán comunicadas dentro de la plataforma.</p>
+          </div>
+          <div>
+            <h4 className="font-bold text-yellow-500 mb-1 uppercase tracking-widest text-[10px]">8. Aceptación</h4>
+            <p>El uso de Clebrify implica la aceptación total de estos términos.</p>
+          </div>
+        </div>
+
+        <button onClick={onClose} className="w-full btn-primary py-4 rounded-xl mt-8 shadow-lg font-bold">Aceptar y Cerrar</button>
+      </div>
+    </div>
+  );
+};
+
 // --- LANDING PAGE (REDISEÑO VISUAL ELEGANTE) ---
 const LandingPage = ({ onStart, theme, toggleTheme, language, toggleLanguage }) => {
   const isDark = theme === 'dark';
+  const [showTerms, setShowTerms] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [activeFeature, setActiveFeature] = useState(null);
     
@@ -507,10 +587,15 @@ const LandingPage = ({ onStart, theme, toggleTheme, language, toggleLanguage }) 
     <div className="flex flex-col min-h-[100dvh] overflow-y-auto custom-scrollbar">
       {/* NAVBAR */}
       <nav className={`w-full px-6 py-4 flex justify-between items-center z-50 sticky top-0 backdrop-blur-md border-b transition-colors duration-500 ${isDark ? 'bg-[#0f172a]/80 border-white/5' : 'bg-white/80 border-gray-100'}`}>
-        <div className="flex items-center gap-2">
+       <div className="flex items-center gap-3">
           {/* Logo en la Navbar */}
-          <img src="/logo.svg" alt="Clebrify" className="w-8 h-8 rounded-lg shadow-lg" />
-          <span className={`text-xl font-serif font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
+          <img src="/logo.svg" alt="Clebrify" className="w-9 h-9 rounded-lg shadow-lg" />
+          <div className="flex flex-col justify-center">
+            <span className={`text-xl font-serif font-bold tracking-tight leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
+            <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-yellow-500/80' : 'text-orange-500/80'}`}>
+              Vívelo. Compártelo. Revívelo.
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <LanguageToggle language={language} toggleLanguage={toggleLanguage} isDark={isDark} />
@@ -621,7 +706,11 @@ const LandingPage = ({ onStart, theme, toggleTheme, language, toggleLanguage }) 
             <a href="mailto:contacto@clebrify.com" className="hover:text-yellow-500 transition p-2"><Mail size={20} /></a>
             <a href="https://www.instagram.com/clebrify?igsh=MXQxeTlhb2d0dWd4" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition p-2"><Instagram size={20} /></a>
         </div>
-        <p className="text-[10px] opacity-60">© 2025 {text.footer_rights}</p>
+        <div className="flex flex-col items-center gap-2">
+            <button onClick={() => setShowTerms(true)} className="text-xs hover:underline hover:text-yellow-500 transition">Términos y Condiciones</button>
+            <p className="text-[10px] opacity-60">© 2026 {text.footer_rights}</p>
+        </div>
+        {showTerms && <TermsModal onClose={() => setShowTerms(false)} theme={theme} />}
       </footer>
     </div>
   );
@@ -632,6 +721,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
   const [mode, setMode] = useState('join'); // 'join', 'create', 'waiting_approval', 'success_create'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showTerms, setShowTerms] = useState(false);
   
   // Usamos el diccionario
   const text = TRANSLATIONS[language];
@@ -967,9 +1057,14 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
       
       {/* HEADER */}
       <nav className="absolute top-0 left-0 w-full px-6 py-6 flex items-center z-20">
-        <button onClick={onBack} className="flex items-center gap-2 hover:opacity-80 transition cursor-pointer">
-          <img src="/logo.svg" alt="Logo" className="w-8 h-8 rounded-lg" />
-          <span className={`text-xl font-serif font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
+        <button onClick={onBack} className="flex items-center gap-3 hover:opacity-80 transition cursor-pointer text-left">
+          <img src="/logo.svg" alt="Logo" className="w-9 h-9 rounded-lg shadow-sm" />
+          <div className="flex flex-col justify-center items-start">
+            <span className={`text-xl font-serif font-bold tracking-tight leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
+            <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-yellow-500/80' : 'text-orange-500/80'}`}>
+              Vívelo. Compártelo. Revívelo.
+            </span>
+          </div>
         </button>
       </nav>
 
@@ -1086,7 +1181,11 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
           )}
         </div>
       </div>
-      <div className="absolute bottom-4 z-10 text-center opacity-40 text-xs"><a href="mailto:contacto@clebrify.com" className="hover:underline flex items-center justify-center gap-1 transition hover:text-yellow-600"><Mail size={12} /> contacto@clebrify.com</a></div>
+      <div className="absolute bottom-4 z-10 text-center opacity-40 text-xs w-full flex flex-col items-center gap-2">
+        <a href="mailto:contacto@clebrify.com" className="hover:underline flex items-center justify-center gap-1 transition hover:text-yellow-600"><Mail size={12} /> contacto@clebrify.com</a>
+        <button onClick={() => setShowTerms(true)} className="hover:underline transition hover:text-yellow-600">Términos y Condiciones</button>
+      </div>
+      {showTerms && <TermsModal onClose={() => setShowTerms(false)} theme={theme} />}
     </div>
   );
 };
@@ -1478,6 +1577,7 @@ const ProfileView = ({ eventData, user, onLogout, posts, usersList, theme, toggl
   const [showPin, setShowPin] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const liveUser = usersList.find(u => u.deviceId === user.deviceId) || user;
   
@@ -1625,7 +1725,12 @@ const ProfileView = ({ eventData, user, onLogout, posts, usersList, theme, toggl
 
        {user.role === 'host' && (<div className="z-10 relative"><button onClick={handleDownloadAll} disabled={isDownloading} className="w-full bg-green-900/20 border border-green-500/30 text-green-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 mb-4 hover:bg-green-900/30 transition">{isDownloading ? text.downloading : text.download_album}</button>{user.adminPin && (<div className="bg-red-500/5 rounded-2xl p-6 border border-red-500/20 mb-6"><div className="flex items-center gap-2 mb-2"><Lock size={18} className="text-red-400"/><p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">{text.master_pin}</p></div><div className={`p-4 rounded-xl flex justify-between items-center border ${isDark ? 'bg-black/40 border-red-500/10' : 'bg-white border-red-200'}`}><span className={`text-xl font-mono font-bold tracking-[0.3em] ${isDark ? 'text-red-100' : 'text-red-900'}`}>{showPin ? user.adminPin : '••••'}</span><button onClick={() => setShowPin(!showPin)} className="text-red-400 hover:text-red-500">{showPin ? <EyeOff size={20} /> : <Eye size={20} />}</button></div></div>)}</div>)}
        <div className="mt-6 mb-6 z-10 relative"><button onClick={onLogout} className="w-full bg-red-500/5 border border-red-500/20 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-500/10 transition relative z-10"><LogOut size={20} /> {text.logout}</button></div>
-       <div className="text-center opacity-40 pb-10 text-xs"><p className="mb-1">{text.need_help}</p><a href="mailto:contacto@clebrify.com" className="font-bold hover:underline flex items-center justify-center gap-1"><Mail size={12} /> contacto@clebrify.com</a></div>
+       <div className="text-center opacity-40 pb-10 text-xs flex flex-col items-center gap-2 relative z-10">
+         <p className="mb-1">{text.need_help}</p>
+         <a href="mailto:contacto@clebrify.com" className="font-bold hover:underline flex items-center justify-center gap-1"><Mail size={12} /> contacto@clebrify.com</a>
+         <button onClick={() => setShowTerms(true)} className="font-bold hover:underline transition hover:text-yellow-600">Términos y Condiciones</button>
+       </div>
+       {showTerms && <TermsModal onClose={() => setShowTerms(false)} theme={theme} />}
     </div>
   );
 };
