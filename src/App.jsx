@@ -361,9 +361,9 @@ const normalizeName = (name) => {
 
 // --- COMPONENTE DE TEMA ---
 const ThemeToggle = ({ theme, toggleTheme }) => (
-  <button 
+    <button 
     onClick={toggleTheme} 
-    className={`p-2.5 rounded-full transition-all duration-500 border ${theme === 'dark' ? 'bg-white/5 border-white/10 text-yellow-400 hover:bg-white/10' : 'bg-gray-100 border-gray-200 text-orange-500 hover:bg-gray-200'}`}
+    className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-500 border ${theme === 'dark' ? 'bg-white/5 border-white/10 text-yellow-400 hover:bg-white/10' : 'bg-gray-100 border-gray-200 text-orange-500 hover:bg-gray-200'}`}
   >
     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
   </button>
@@ -371,9 +371,9 @@ const ThemeToggle = ({ theme, toggleTheme }) => (
 
 // --- BOTÓN DE IDIOMA (REUTILIZABLE) ---
 const LanguageToggle = ({ language, toggleLanguage, isDark }) => (
-  <button 
+    <button 
     onClick={toggleLanguage}
-    className={`px-3 py-2 rounded-full text-lg transition-all duration-300 border ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-gray-100 border-gray-200 hover:bg-gray-200'}`}
+    className={`w-10 h-10 flex items-center justify-center rounded-full text-lg transition-all duration-300 border ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-gray-100 border-gray-200 hover:bg-gray-200'}`}
     title={language === 'es' ? "Switch to English" : "Cambiar a Español"}
   >
     {language === 'es' ? '🇲🇽' : '🇺🇸'}
@@ -604,7 +604,7 @@ const LandingPage = ({ onStart, theme, toggleTheme, language, toggleLanguage }) 
           <button onClick={onStart} className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-1 sm:gap-2 ${isDark ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800'}`}>{text.nav_login} <ArrowRight size={14}/></button>
         </div>
       </nav>
-      
+
       <header className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 py-12 md:py-20 max-w-7xl mx-auto w-full gap-12 md:gap-20">
         <div className="flex-1 text-center md:text-left animate-enter space-y-8 max-w-xl">
           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${isDark ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'bg-orange-50 text-orange-600 border-orange-100'}`}><Sparkles size={12} /> {text.hero_badge}</div>
