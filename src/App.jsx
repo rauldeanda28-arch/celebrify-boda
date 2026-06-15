@@ -589,11 +589,12 @@ const LandingPage = ({ onStart, theme, toggleTheme, language, toggleLanguage }) 
            <nav className={`w-full px-4 sm:px-6 py-4 flex justify-between items-center z-50 sticky top-0 backdrop-blur-md border-b transition-colors duration-500 ${isDark ? 'bg-[#0f172a]/80 border-white/5' : 'bg-white/80 border-gray-100'}`}>
        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Logo en la Navbar */}
-          <img src="/logo.svg" alt="Clebrify" className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg shadow-lg" />
-          <div className="flex flex-col justify-center">
+                    {/* Logo en la Navbar */}
+          <img src="/logo.svg" alt="Clebrify" className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg shadow-lg shrink-0" />
+          <div className="flex flex-col justify-center shrink-0">
             <span className={`text-lg sm:text-xl font-serif font-bold tracking-tight leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
-            {/* Aquí agregamos 'hidden sm:block' para que el texto largo se oculte en celulares */}
-            <span className={`hidden sm:block text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-yellow-500/80' : 'text-orange-500/80'}`}>
+            {/* ¡Regresa el eslogan! Le ponemos text-[7px] en celular para que quepa sin empujar a los botones */}
+            <span className={`text-[7px] sm:text-[9px] font-bold uppercase tracking-wider sm:tracking-widest mt-0.5 sm:mt-1 ${isDark ? 'text-yellow-500/80' : 'text-orange-500/80'}`}>
               Vívelo. Compártelo. Revívelo.
             </span>
           </div>
