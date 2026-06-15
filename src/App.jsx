@@ -1198,13 +1198,16 @@ const CameraView = ({ onClose, onUpload, theme }) => {
   const canvasRef = useRef(null);
   const isDark = theme === 'dark';
 
-  const processImage = (source) => {
-    const canvas = canvasRef.current; if (!canvas) return;
+    const processImage = (source) => {
+    const canvas = document.createElement('canvas'); 
     const MAX_WIDTH = 1080;
     let width = source.width; let height = source.height;
     if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
     canvas.width = width; canvas.height = height;
-    const ctx = canvas.getContext('2d'); ctx.drawImage(source, 0, 0, width, height);
+    
+    const ctx = canvas.getContext('2d'); 
+    ctx.drawImage(source, 0, 0, width, height);
+    
     onUpload({ type: 'image', data: canvas.toDataURL('image/jpeg', 0.85) });
   };
 
@@ -2086,8 +2089,9 @@ export default function App() {
     }
   };
 
-  const handleUpload = (uploadObject) => {
-    const tempId = Date.now().toString();
+    const handleUpload = (uploadObject) => {
+    const tempId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    
     setUploadQueue(prev => [...prev, {
         id: tempId,
         type: uploadObject.type,
