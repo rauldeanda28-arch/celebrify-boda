@@ -1191,39 +1191,58 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
 };
 
 // --- COMPONENTE CÁMARA ---
+// --- FUNCIÓN PARA EXTRAER PORTADA DE VIDEO ---
+const generateVideoThumbnail = (file) => {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    video.src = URL.createObjectURL(file);
+    video.currentTime = 1; 
+    video.onseeked = () => {
+      const canvas = document.createElement("canvas");
+      const scale = 300 / (video.videoWidth || 300);
+      canvas.width = 300;
+      canvas.height = (video.videoHeight || 300) * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.5)); 
+    };
+    video.onerror = () => resolve(null);
+  });
+};
+
+// --- COMPONENTE CÁMARA ---
 const CameraView = ({ onClose, onUpload, theme }) => {
   const cameraInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const galleryInputRef = useRef(null);
-  const canvasRef = useRef(null);
   const isDark = theme === 'dark';
 
-    const processImage = (source) => {
+  const processImage = (source) => {
     const canvas = document.createElement('canvas'); 
     const MAX_WIDTH = 1080;
     let width = source.width; let height = source.height;
     if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
     canvas.width = width; canvas.height = height;
-    
     const ctx = canvas.getContext('2d'); 
     ctx.drawImage(source, 0, 0, width, height);
-    
     onUpload({ type: 'image', data: canvas.toDataURL('image/jpeg', 0.85) });
   };
 
-  // MANEJO DE ARCHIVOS MÚLTIPLES
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-        // Convertimos FileList a Array para iterar
-        Array.from(files).forEach(file => {
+        const filesArray = Array.from(files);
+        for (const file of filesArray) {
             if (file.type.startsWith('video/')) {
-                // Límite 500MB
                 if (file.size > 500000000) { 
                     alert(`⚠️ El video ${file.name} es demasiado pesado (Máx 500MB).`); 
-                    return; 
+                    continue; 
                 }
-                onUpload({ type: 'video', data: file });
+                const thumbBase64 = await generateVideoThumbnail(file);
+                onUpload({ type: 'video', data: file, thumbnail: thumbBase64 });
             } else {
                 const reader = new FileReader();
                 reader.onload = (event) => {
@@ -1233,8 +1252,7 @@ const CameraView = ({ onClose, onUpload, theme }) => {
                 };
                 reader.readAsDataURL(file);
             }
-        });
-        // Limpiamos el input para permitir subir los mismos archivos de nuevo si se desea
+        }
         e.target.value = "";
     }
   };
@@ -1246,17 +1264,13 @@ const CameraView = ({ onClose, onUpload, theme }) => {
          <div className="flex justify-center mb-4"><div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-white border border-gray-200'}`}><Camera size={40} className={isDark ? 'text-white' : 'text-black'} /></div></div>
          <h2 className={`text-3xl font-serif font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Capturar</h2>
          <div className="grid grid-cols-2 gap-4">
-           {/* La cámara suele ser una por una, pero la galería ahora permite múltiples */}
            <button onClick={() => cameraInputRef.current.click()} className={`p-6 rounded-2xl flex flex-col items-center gap-2 border transition ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-gray-100 hover:bg-gray-50 shadow-sm'}`}><Camera size={32} className="text-yellow-500" /><span className="text-sm font-bold">Foto</span></button>
            <button onClick={() => videoInputRef.current.click()} className={`p-6 rounded-2xl flex flex-col items-center gap-2 border transition ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-gray-100 hover:bg-gray-50 shadow-sm'}`}><Video size={32} className="text-purple-500" /><span className="text-sm font-bold">Video</span></button>
            <button onClick={() => galleryInputRef.current.click()} className={`col-span-2 p-4 rounded-xl flex items-center justify-center gap-2 border ${isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-100 text-gray-600 shadow-sm'}`}><Upload size={20} /> Galería (Múltiple)</button>
          </div>
        </div>
-       <canvas ref={canvasRef} className="hidden" />
-       {/* Inputs ocultos */}
        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
        <input ref={videoInputRef} type="file" accept="video/*" capture="environment" className="hidden" onChange={handleFileSelect} />
-       {/* AQUÍ AGREGAMOS 'multiple' PARA LA GALERÍA */}
        <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileSelect} />
     </div>
   );
@@ -1532,7 +1546,7 @@ const PostCard = ({ post, currentUser, currentUserId, onDeletePost, onAddComment
         {looksLikeVideo(post.imageUrl) ? ( 
            <>
              {/* playsInline añadido para intentar mostrar el frame en iOS */}
-             <video className="w-full h-auto max-h-[500px] object-cover" src={post.imageUrl} playsInline preload="metadata" />
+             <video className="w-full h-auto max-h-[500px] object-cover" src={post.imageUrl} poster={post.thumbUrl || ''} playsInline preload="metadata" controls />
              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition">
                 <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/30 text-white"><Maximize2 size={24} /></div>
              </div>
@@ -1864,7 +1878,8 @@ export default function App() {
                 userName: currentUser.name, 
                 userRole: currentUser.role, 
                 userInstagram: currentUser.instagram || '', 
-                imageUrl: downloadUrl, 
+                imageUrl: downloadUrl,
+                thumbUrl: itemToUpload.thumbnail || '', 
                 contentType: type,
                 timestamp: serverTimestamp(), 
                 comments: [], 
@@ -2089,13 +2104,14 @@ export default function App() {
     }
   };
 
-    const handleUpload = (uploadObject) => {
+      const handleUpload = (uploadObject) => {
     const tempId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
     
     setUploadQueue(prev => [...prev, {
         id: tempId,
         type: uploadObject.type,
         data: uploadObject.data,
+        thumbnail: uploadObject.thumbnail || null,
         status: 'pending', 
         timestamp: Date.now()
     }]);
@@ -2400,13 +2416,11 @@ export default function App() {
                                         <div className="w-full h-full bg-black/40 flex items-center justify-center absolute z-10">
                                             <Play size={24} className="text-white/80 drop-shadow-md" fill="white" />
                                         </div>
-                                        <video 
-                                            src={p.imageUrl} 
-                                            className="w-full h-full object-cover opacity-80" 
-                                            muted 
-                                            playsInline 
-                                            preload="metadata"
-                                        />
+                                                                                {p.thumbUrl ? (
+                                            <img src={p.thumbUrl} className="w-full h-full object-cover opacity-80" alt="Video cover" loading="lazy" />
+                                        ) : (
+                                            <video src={p.imageUrl} className="w-full h-full object-cover opacity-80" muted playsInline preload="metadata" />
+                                        )}
                                     </>
                                 ) : (
                                     <img src={p.imageUrl} alt="grid-thumb" className="w-full h-full object-cover transition duration-300 group-hover:scale-110" loading="lazy" />
