@@ -586,24 +586,25 @@ const LandingPage = ({ onStart, theme, toggleTheme, language, toggleLanguage }) 
   return (
     <div className="flex flex-col min-h-[100dvh] overflow-y-auto custom-scrollbar">
       {/* NAVBAR */}
-      <nav className={`w-full px-6 py-4 flex justify-between items-center z-50 sticky top-0 backdrop-blur-md border-b transition-colors duration-500 ${isDark ? 'bg-[#0f172a]/80 border-white/5' : 'bg-white/80 border-gray-100'}`}>
-       <div className="flex items-center gap-3">
+           <nav className={`w-full px-4 sm:px-6 py-4 flex justify-between items-center z-50 sticky top-0 backdrop-blur-md border-b transition-colors duration-500 ${isDark ? 'bg-[#0f172a]/80 border-white/5' : 'bg-white/80 border-gray-100'}`}>
+       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Logo en la Navbar */}
-          <img src="/logo.svg" alt="Clebrify" className="w-9 h-9 rounded-lg shadow-lg" />
+          <img src="/logo.svg" alt="Clebrify" className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg shadow-lg" />
           <div className="flex flex-col justify-center">
-            <span className={`text-xl font-serif font-bold tracking-tight leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
-            <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-yellow-500/80' : 'text-orange-500/80'}`}>
+            <span className={`text-lg sm:text-xl font-serif font-bold tracking-tight leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>Clebrify</span>
+            {/* Aquí agregamos 'hidden sm:block' para que el texto largo se oculte en celulares */}
+            <span className={`hidden sm:block text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-yellow-500/80' : 'text-orange-500/80'}`}>
               Vívelo. Compártelo. Revívelo.
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <LanguageToggle language={language} toggleLanguage={toggleLanguage} isDark={isDark} />
           <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-          <button onClick={onStart} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition flex items-center gap-2 ${isDark ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800'}`}>{text.nav_login} <ArrowRight size={16}/></button>
+          <button onClick={onStart} className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-1 sm:gap-2 ${isDark ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800'}`}>{text.nav_login} <ArrowRight size={14}/></button>
         </div>
       </nav>
-
+      
       <header className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 py-12 md:py-20 max-w-7xl mx-auto w-full gap-12 md:gap-20">
         <div className="flex-1 text-center md:text-left animate-enter space-y-8 max-w-xl">
           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${isDark ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'bg-orange-50 text-orange-600 border-orange-100'}`}><Sparkles size={12} /> {text.hero_badge}</div>
