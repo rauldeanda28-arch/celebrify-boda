@@ -1308,37 +1308,244 @@ const MediaViewer = ({ media, onClose }) => {
   );
 };
 
-// --- NUEVO COMPONENTE CREADOR DE INVITACIONES (DISEÑADOR) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (AHORA EDITABLE Y CON CIERRE CLARO) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (VERSION PROFESIONAL) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (VERSION FINAL OPTIMIZADA) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (CON BLOQUEO PARA INVITADOS) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (DISEÑADOR COMPLETO) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (DISEÑADOR PROFESIONAL COMPLETO) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (MODO DISEÑO PROPIO + MOVIMIENTO DE QR) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (EDICIÓN TOTAL: TEXTO + ESTILO + FOTO + QR STICKER) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (DISEÑO PROFESIONAL CON COLORES ORIGINALES) ---
-// --- COMPONENTE CREADOR DE INVITACIONES (CORREGIDO Y SINCRONIZADO) ---
+
+
+// --- DEFINICIÓN DE LAS 5 PLANTILLAS ---
+const INVITATION_TEMPLATES = [
+  {
+    id: 'classic',
+    name: 'Clásica elegante',
+    defaultBg: '#FDFCF8',
+    defaultText: '#2D2D2D',
+    defaultAccent: '#D4AF37',
+  },
+  {
+    id: 'qr_hero',
+    name: 'QR protagonista',
+    defaultBg: '#0f172a',
+    defaultText: '#FFFFFF',
+    defaultAccent: '#D4AF37',
+  },
+  {
+    id: 'side_block',
+    name: 'Bloque lateral moderno',
+    defaultBg: '#FDF4EC',
+    defaultText: '#2D2D2D',
+    defaultAccent: '#D85A30',
+  },
+  {
+    id: 'playful',
+    name: 'Divertida',
+    defaultBg: '#FDF2F6',
+    defaultText: '#72243E',
+    defaultAccent: '#ED93B1',
+  },
+  {
+    id: 'minimal',
+    name: 'Minimalista',
+    defaultBg: '#FFFFFF',
+    defaultText: '#2C2C2A',
+    defaultAccent: '#888780',
+  },
+];
+
+// --- PALETA AMPLIADA DE SWATCHES (10 colores cada uno) ---
+const BG_SWATCHES = ['#FDFCF8', '#FFFFFF', '#000000', '#0f172a', '#1e293b', '#4c1d95', '#166534', '#7c2d12', '#FDF2F6', '#FDF4EC'];
+const TEXT_SWATCHES = ['#2D2D2D', '#FFFFFF', '#D4AF37', '#60a5fa', '#f87171', '#72243E', '#993C1D', '#166534', '#888780', '#000000'];
+const ACCENT_SWATCHES = ['#D4AF37', '#D85A30', '#ED93B1', '#534AB7', '#0F6E56', '#993556', '#185FA5', '#854F0B', '#A32D2D', '#5F5E5A'];
+
+// --- COMPONENTE: FILA DE COLOR (SWATCHES + PICKER LIBRE) ---
+const ColorRow = ({ label, value, onChange, swatches }) => (
+  <div className="flex justify-between items-center gap-2">
+    <span className="text-[9px] text-gray-400 font-bold uppercase shrink-0">{label}</span>
+    <div className="flex gap-1.5 items-center flex-wrap justify-end">
+      {swatches.map(c => (
+        <button
+          key={c}
+          onClick={() => onChange(c)}
+          className={`w-4 h-4 rounded-full border transition ${value === c ? 'border-yellow-500 scale-125' : 'border-white/20'}`}
+          style={{ backgroundColor: c }}
+        />
+      ))}
+      {/* Picker libre: círculo con icono de arcoíris usando un input color nativo */}
+      <label className="relative w-5 h-5 rounded-full border border-white/30 overflow-hidden cursor-pointer shrink-0" style={{ background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' }}>
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+      </label>
+    </div>
+  </div>
+);
+
+// --- COMPONENTE: PREVIEW DE CADA PLANTILLA (usado en el selector) ---
+const TemplateThumb = ({ tpl, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`shrink-0 w-16 h-24 rounded-xl border-2 overflow-hidden relative transition ${active ? 'border-yellow-500 scale-105' : 'border-white/10 opacity-60'}`}
+    style={{ backgroundColor: tpl.defaultBg }}
+  >
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-1">
+      <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: tpl.defaultAccent }} />
+      <div className="w-8 h-1 rounded-full" style={{ backgroundColor: tpl.defaultText, opacity: 0.6 }} />
+    </div>
+    <span className="absolute bottom-0.5 left-0 right-0 text-[6px] font-bold text-center truncate px-1" style={{ color: tpl.defaultText }}>
+      {tpl.name}
+    </span>
+  </button>
+);
+
+// --- RENDERIZADOR DE CADA PLANTILLA (la vista previa grande) ---
+const InvitationCanvas = ({ templateId, headerText, mainTitle, infoText, bgColor, textColor, accentColor, qrPos, qrScale, qrBgVisible, eventCode, appUrl, fontFamily, inviteRef }) => {
+
+  const qrSize = Math.round(100 * qrScale);
+
+  // QR reutilizable con su fondo y tamaño dinámico
+  const QrBlock = ({ extraClass = '' }) => (
+    <div className={`flex flex-col items-center gap-1 ${extraClass}`}>
+      <div className={`p-2.5 rounded-2xl shadow-xl transition-all ${qrBgVisible ? 'bg-white' : 'bg-transparent'}`}>
+        <QRCode value={appUrl} size={qrSize} bgColor="transparent" fgColor={qrBgVisible ? '#000000' : textColor} />
+      </div>
+      <p className="text-[11px] font-mono font-bold tracking-widest" style={{ color: textColor }}>{eventCode}</p>
+    </div>
+  );
+
+  // --- PLANTILLA 1: CLÁSICA (texto izquierda, QR libre con sliders) ---
+  if (templateId === 'classic') {
+    return (
+      <div ref={inviteRef} className="w-[310px] h-[520px] relative flex flex-col items-start justify-center p-8 text-left" style={{ backgroundColor: bgColor, color: textColor, fontFamily }}>
+        <div className="relative z-10 space-y-6 w-full mt-10">
+          <div className="space-y-1">
+            <p className="text-[9px] font-bold tracking-[0.2em] opacity-70 mb-2 uppercase" style={{ color: accentColor }}>{headerText}</p>
+            <h2 className="text-3xl font-bold uppercase leading-tight tracking-tight">{mainTitle}</h2>
+            <div className="w-12 h-[2px] mt-3" style={{ backgroundColor: accentColor }}></div>
+          </div>
+          <p className="text-[11px] font-medium tracking-wide uppercase border-l-2 border-current pl-4 py-1">{infoText}</p>
+        </div>
+        <div className="absolute z-20" style={{ top: '50%', left: '50%', transform: `translate(${qrPos.x}px, ${qrPos.y}px)` }}>
+          <QrBlock />
+        </div>
+        <p className="absolute bottom-8 left-8 text-[7px] opacity-30 tracking-[0.4em] uppercase font-bold">Clebrify . Moments Forever</p>
+      </div>
+    );
+  }
+
+  // --- PLANTILLA 2: QR PROTAGONISTA (QR grande arriba, texto centrado abajo) ---
+  if (templateId === 'qr_hero') {
+    return (
+      <div ref={inviteRef} className="w-[310px] h-[520px] relative flex flex-col items-center justify-end p-8 text-center" style={{ backgroundColor: bgColor, color: textColor, fontFamily }}>
+        <div className="absolute z-20" style={{ top: '15%', left: '50%', transform: `translate(calc(-50% + ${qrPos.x}px), ${qrPos.y}px)` }}>
+          <QrBlock />
+        </div>
+        <div className="relative z-10 space-y-3 mb-10">
+          <p className="text-[9px] font-bold tracking-[0.2em] opacity-70 uppercase" style={{ color: accentColor }}>{headerText}</p>
+          <h2 className="text-3xl font-bold uppercase leading-tight tracking-tight">{mainTitle}</h2>
+          <p className="text-[11px] font-medium tracking-wide opacity-80 mt-2">{infoText}</p>
+        </div>
+        <p className="absolute bottom-3 left-0 right-0 text-[7px] opacity-30 tracking-[0.4em] uppercase font-bold">Clebrify . Moments Forever</p>
+      </div>
+    );
+  }
+
+  // --- PLANTILLA 3: BLOQUE LATERAL (franja de color con QR, info en columna) ---
+  if (templateId === 'side_block') {
+    return (
+      <div ref={inviteRef} className="w-[310px] h-[520px] relative flex" style={{ backgroundColor: bgColor, color: textColor, fontFamily }}>
+        <div className="w-[38%] flex items-center justify-center relative" style={{ backgroundColor: accentColor }}>
+          <div className="absolute z-20" style={{ top: '50%', left: '50%', transform: `translate(calc(-50% + ${qrPos.x}px), calc(-50% + ${qrPos.y}px))` }}>
+            <QrBlock />
+          </div>
+        </div>
+        <div className="flex-1 p-6 flex flex-col justify-center space-y-3">
+          <p className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: accentColor }}>{headerText}</p>
+          <h2 className="text-2xl font-bold leading-tight">{mainTitle}</h2>
+          <p className="text-[10px] opacity-70 leading-relaxed whitespace-pre-line">{infoText}</p>
+        </div>
+        <p className="absolute bottom-3 right-6 text-[7px] opacity-30 tracking-[0.3em] uppercase font-bold">Clebrify</p>
+      </div>
+    );
+  }
+
+  // --- PLANTILLA 4: DIVERTIDA (centrada, QR circular punteado) ---
+  if (templateId === 'playful') {
+    return (
+      <div ref={inviteRef} className="w-[310px] h-[520px] relative flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: bgColor, color: textColor, fontFamily }}>
+        <div className="relative z-10 space-y-3 mb-8">
+          <p className="text-[10px] font-bold tracking-wide uppercase" style={{ color: accentColor }}>{headerText}</p>
+          <h2 className="text-3xl font-bold leading-tight">{mainTitle}</h2>
+          <p className="text-[11px] opacity-80 mt-1">{infoText}</p>
+        </div>
+        <div className="absolute z-20" style={{ top: '60%', left: '50%', transform: `translate(calc(-50% + ${qrPos.x}px), calc(-50% + ${qrPos.y}px))` }}>
+          <div className="flex flex-col items-center gap-1">
+            <div className={`p-3 rounded-full border-4 border-dashed flex items-center justify-center ${qrBgVisible ? 'bg-white' : 'bg-transparent'}`} style={{ borderColor: accentColor }}>
+              <QRCode value={appUrl} size={qrSize} bgColor="transparent" fgColor={qrBgVisible ? '#000000' : textColor} />
+            </div>
+            <p className="text-[11px] font-bold tracking-widest mt-1" style={{ color: accentColor }}>{eventCode}</p>
+          </div>
+        </div>
+        <p className="absolute bottom-4 left-0 right-0 text-[7px] opacity-40 tracking-[0.3em] uppercase font-bold">Clebrify</p>
+      </div>
+    );
+  }
+
+  // --- PLANTILLA 5: MINIMALISTA (mucho espacio en blanco, QR chico discreto) ---
+  if (templateId === 'minimal') {
+    return (
+      <div ref={inviteRef} className="w-[310px] h-[520px] relative flex flex-col justify-between p-9" style={{ backgroundColor: bgColor, color: textColor, fontFamily }}>
+        <div>
+          <p className="text-[9px] font-light tracking-[0.3em] uppercase opacity-60">{headerText}</p>
+          <h2 className="text-3xl font-light leading-tight mt-2">{mainTitle}</h2>
+        </div>
+        <div className="flex justify-between items-end relative">
+          <p className="text-[10px] opacity-70 leading-relaxed whitespace-pre-line max-w-[60%]">{infoText}<br/><b style={{ color: textColor }}>{eventCode}</b></p>
+          <div className="relative z-20" style={{ transform: `translate(${qrPos.x}px, ${qrPos.y}px)` }}>
+            <div className={`p-2 rounded-lg ${qrBgVisible ? 'bg-white' : 'bg-transparent'}`}>
+              <QRCode value={appUrl} size={Math.round(70 * qrScale)} bgColor="transparent" fgColor={qrBgVisible ? '#000000' : textColor} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+// --- COMPONENTE PRINCIPAL ---
 const InvitationModal = ({ user, eventData, onClose, theme }) => {
   const config = eventData?.invitationConfig || {};
+  const isHost = user.role === 'host';
+  const appUrl = `${window.location.origin}?code=${user.eventCode}`;
+  const inviteRef = useRef(null);
+
+  const [templateId, setTemplateId] = useState(config.templateId || 'classic');
+  const currentTemplate = INVITATION_TEMPLATES.find(t => t.id === templateId) || INVITATION_TEMPLATES[0];
 
   const [headerText, setHeaderText] = useState(config.headerText || "ESTÁS INVITADO A");
   const [mainTitle, setMainTitle] = useState(config.mainTitle || eventData?.eventName || "Nuestro Evento");
   const [infoText, setInfoText] = useState(config.infoText || "📍 Salón de Eventos - 8:00 PM");
-  
-  const [bgColor, setBgColor] = useState(config.bgColor || '#FDFCF8');
-  const [textColor, setTextColor] = useState(config.textColor || '#2D2D2D');
-  const [accentColor, setAccentColor] = useState(config.accentColor || '#D4AF37');
-  const [fontFamily, setFontFamily] = useState(config.fontFamily || "'Playfair Display', serif");
-  
-  // --- Recuperamos los controles de posición ---
-  const [qrPos, setQrPos] = useState(config.qrPos || { x: 0, y: 110 }); // Centrado por defecto abajo
+
+  const [bgColor, setBgColor] = useState(config.bgColor || currentTemplate.defaultBg);
+  const [textColor, setTextColor] = useState(config.textColor || currentTemplate.defaultText);
+  const [accentColor, setAccentColor] = useState(config.accentColor || currentTemplate.defaultAccent);
+  const [fontFamily] = useState(config.fontFamily || "'Playfair Display', serif");
+
+  const [qrPos, setQrPos] = useState(config.qrPos || { x: 0, y: 110 });
   const [qrScale, setQrScale] = useState(config.qrScale || 1);
   const [qrBgVisible, setQrBgVisible] = useState(config.qrBgVisible !== undefined ? config.qrBgVisible : true);
 
-  const inviteRef = useRef(null);
-  const isHost = user.role === 'host';
-  const appUrl = `${window.location.origin}?code=${user.eventCode}`;
+  // Al cambiar de plantilla, si el host no había guardado colores propios todavía,
+  // sugerimos los colores default de la nueva plantilla (pero no pisamos si ya personalizó)
+  const handleSelectTemplate = (tpl) => {
+    setTemplateId(tpl.id);
+    if (!config.templateId) {
+      setBgColor(tpl.defaultBg);
+      setTextColor(tpl.defaultText);
+      setAccentColor(tpl.defaultAccent);
+    }
+  };
 
   const saveDesign = async () => {
     if (!isHost) return;
@@ -1346,7 +1553,7 @@ const InvitationModal = ({ user, eventData, onClose, theme }) => {
       const eventRef = doc(db, 'events', user.eventCode);
       await updateDoc(eventRef, {
         invitationConfig: {
-          headerText, mainTitle, infoText, bgColor, textColor, 
+          templateId, headerText, mainTitle, infoText, bgColor, textColor,
           accentColor, fontFamily, qrPos, qrScale, qrBgVisible
         }
       });
@@ -1371,103 +1578,88 @@ const InvitationModal = ({ user, eventData, onClose, theme }) => {
 
   return (
     <div onClick={onClose} className="fixed inset-0 bg-black/95 z-[100] flex flex-col animate-in fade-in duration-300 overflow-y-auto custom-scrollbar">
-      
+
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm mx-auto px-6 pt-10 pb-40">
-        
-        <p className="text-white/40 text-[10px] text-center mb-6 uppercase tracking-widest font-bold">
+
+        <p className="text-white/40 text-[10px] text-center mb-4 uppercase tracking-widest font-bold">
           {isHost ? "Diseñador Pro de Invitación" : "Invitación del Evento"}
         </p>
 
         {isHost && (
-          <div className="glass-panel p-5 rounded-3xl space-y-5 border border-white/10 mb-8 shadow-2xl">
-              
+          <>
+            {/* --- SELECTOR DE PLANTILLAS --- */}
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-6 custom-scrollbar px-1">
+              {INVITATION_TEMPLATES.map(tpl => (
+                <TemplateThumb key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => handleSelectTemplate(tpl)} />
+              ))}
+            </div>
+
+            <div className="glass-panel p-5 rounded-3xl space-y-5 border border-white/10 mb-8 shadow-2xl">
+
               <div className="space-y-3">
-                  <input type="text" value={headerText} onChange={(e) => setHeaderText(e.target.value.toUpperCase())} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Encabezado" />
-                  <input type="text" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Evento" />
-                  <input type="text" value={infoText} onChange={(e) => setInfoText(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Lugar / Hora" />
+                <input type="text" value={headerText} onChange={(e) => setHeaderText(e.target.value.toUpperCase())} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Encabezado" />
+                <input type="text" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none" placeholder="Evento" />
+                <textarea value={infoText} onChange={(e) => setInfoText(e.target.value)} rows={2} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none resize-none" placeholder="Lugar / Hora" />
               </div>
 
-              {/* --- NUEVA SECCIÓN: ACOMODAR QR --- */}
+              {/* --- ACOMODAR QR: POSICIÓN + TAMAÑO --- */}
               <div className="space-y-4 pt-4 border-t border-white/5">
-                  <p className="text-yellow-500 text-[9px] font-bold uppercase text-center tracking-widest">Acomodar QR</p>
-                  <div className="space-y-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[8px] text-gray-400 uppercase flex justify-between">Izquierda / Derecha <span>{qrPos.x}px</span></label>
-                        <input type="range" min="-100" max="100" value={qrPos.x} onChange={(e) => setQrPos({...qrPos, x: parseInt(e.target.value)})} className="w-full accent-yellow-500" />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[8px] text-gray-400 uppercase flex justify-between">Arriba / Abajo <span>{qrPos.y}px</span></label>
-                        <input type="range" min="-220" max="220" value={qrPos.y} onChange={(e) => setQrPos({...qrPos, y: parseInt(e.target.value)})} className="w-full accent-yellow-500" />
-                      </div>
+                <p className="text-yellow-500 text-[9px] font-bold uppercase text-center tracking-widest">Acomodar QR</p>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[8px] text-gray-400 uppercase flex justify-between">Izquierda / Derecha <span>{qrPos.x}px</span></label>
+                    <input type="range" min="-100" max="100" value={qrPos.x} onChange={(e) => setQrPos({ ...qrPos, x: parseInt(e.target.value) })} className="w-full accent-yellow-500" />
                   </div>
-                  <button onClick={() => setQrBgVisible(!qrBgVisible)} className="w-full py-2 bg-white/5 border border-white/10 rounded-lg text-[8px] text-white font-bold uppercase">
-                      {qrBgVisible ? "Quitar fondo blanco al QR" : "Poner fondo blanco al QR"}
-                  </button>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[8px] text-gray-400 uppercase flex justify-between">Arriba / Abajo <span>{qrPos.y}px</span></label>
+                    <input type="range" min="-220" max="220" value={qrPos.y} onChange={(e) => setQrPos({ ...qrPos, y: parseInt(e.target.value) })} className="w-full accent-yellow-500" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[8px] text-gray-400 uppercase flex justify-between">Tamaño del QR <span>{Math.round(qrScale * 100)}%</span></label>
+                    <input type="range" min="0.5" max="1.8" step="0.05" value={qrScale} onChange={(e) => setQrScale(parseFloat(e.target.value))} className="w-full accent-yellow-500" />
+                  </div>
+                </div>
+                <button onClick={() => setQrBgVisible(!qrBgVisible)} className="w-full py-2 bg-white/5 border border-white/10 rounded-lg text-[8px] text-white font-bold uppercase">
+                  {qrBgVisible ? "Quitar fondo blanco al QR" : "Poner fondo blanco al QR"}
+                </button>
               </div>
 
-              {/* Colores y Fuentes */}
+              {/* --- COLORES: FONDO, LETRA, ACENTO --- */}
               <div className="pt-4 border-t border-white/5 space-y-3">
-                <div className="flex justify-between items-center">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase">Fondo</span>
-                    <div className="flex gap-2">
-                        {['#FDFCF8', '#000000', '#1e293b', '#4c1d95', '#166534'].map(c => (
-                            <button key={c} onClick={() => setBgColor(c)} className={`w-4 h-4 rounded-full border ${bgColor === c ? 'border-yellow-500 scale-110' : 'border-white/20'}`} style={{backgroundColor: c}} />
-                        ))}
-                    </div>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase">Letra</span>
-                    <div className="flex gap-2">
-                        {['#2D2D2D', '#FFFFFF', '#D4AF37', '#60a5fa', '#f87171'].map(c => (
-                            <button key={c} onClick={() => { setTextColor(c); setAccentColor(c); }} className={`w-4 h-4 rounded-full border ${textColor === c ? 'border-yellow-500 scale-110' : 'border-white/20'}`} style={{backgroundColor: c}} />
-                        ))}
-                    </div>
-                </div>
+                <ColorRow label="Fondo" value={bgColor} onChange={setBgColor} swatches={BG_SWATCHES} />
+                <ColorRow label="Letra" value={textColor} onChange={setTextColor} swatches={TEXT_SWATCHES} />
+                <ColorRow label="Acento" value={accentColor} onChange={setAccentColor} swatches={ACCENT_SWATCHES} />
               </div>
 
               <button onClick={saveDesign} className="w-full py-3 bg-green-600 rounded-xl text-white text-[10px] font-bold uppercase flex items-center justify-center gap-2 shadow-lg active:scale-95 transition">
-                <Save size={14}/> Sincronizar Posición y Diseño
+                <Save size={14} /> Sincronizar Posición y Diseño
               </button>
-          </div>
+            </div>
+          </>
         )}
 
         {/* --- VISTA PREVIA --- */}
         <div className="shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-hidden rounded-[1.5rem] mx-auto mb-8 bg-zinc-900">
-            <div 
-              ref={inviteRef}
-              className="w-[310px] h-[520px] relative flex flex-col items-start justify-center p-8 text-left"
-              style={{ backgroundColor: bgColor, color: textColor, fontFamily: fontFamily }}
-            >
-              <div className="relative z-10 space-y-6 w-full mt-10">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-bold tracking-[0.2em] opacity-70 mb-2 uppercase" style={{color: accentColor}}>{headerText}</p>
-                    <h2 className="text-3xl font-bold uppercase leading-tight tracking-tight">{mainTitle}</h2>
-                    <div className="w-12 h-[2px] mt-3" style={{backgroundColor: accentColor}}></div>
-                  </div>
-                  <p className="text-[11px] font-medium tracking-wide uppercase border-l-2 border-current pl-4 py-1">{infoText}</p>
-              </div>
-
-              {/* QR CON POSICIÓN PERSONALIZADA */}
-              <div 
-                className="absolute z-20 flex flex-col items-center gap-1"
-                style={{ 
-                  top: '50%', 
-                  left: '50%', 
-                  transform: `translate(${qrPos.x}px, ${qrPos.y}px)` 
-                }}
-              >
-                  <div className={`p-3 rounded-2xl shadow-xl transition-all ${qrBgVisible ? 'bg-white' : 'bg-transparent'}`}>
-                      <QRCode value={appUrl} size={100} bgColor="transparent" fgColor={qrBgVisible ? '#000000' : textColor} />
-                  </div>
-                  <p className="text-[12px] font-mono font-bold tracking-widest">{user.eventCode}</p>
-              </div>
-
-              <p className="absolute bottom-8 left-8 text-[7px] opacity-30 tracking-[0.4em] uppercase font-bold">Clebrify . Moments Forever</p>
-            </div>
+          <InvitationCanvas
+            templateId={templateId}
+            headerText={headerText}
+            mainTitle={mainTitle}
+            infoText={infoText}
+            bgColor={bgColor}
+            textColor={textColor}
+            accentColor={accentColor}
+            qrPos={qrPos}
+            qrScale={qrScale}
+            qrBgVisible={qrBgVisible}
+            eventCode={user.eventCode}
+            appUrl={appUrl}
+            fontFamily={fontFamily}
+            inviteRef={inviteRef}
+          />
         </div>
 
         <button onClick={downloadInvite} className="w-full btn-primary px-8 py-4 rounded-2xl flex items-center justify-center gap-3 font-bold active:scale-95 transition">
-            <Download size={20}/> Guardar Invitación en Galería
+          <Download size={20} /> Guardar Invitación en Galería
         </button>
 
       </div>
