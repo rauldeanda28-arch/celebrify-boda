@@ -39,6 +39,7 @@ const MASTER_PIN = "123456";
 const CREATOR_PIN = "777777"; 
 const STORAGE_KEY = 'celebrify_v5_7_session'; 
 const THEME_KEY = 'celebrify_theme_pref';
+const LANG_KEY = 'celebrify_lang_pref';
 const INTRO_KEY = 'celebrify_intro_seen_v1'; 
 const REMEMBER_KEY = 'celebrify_user_remember_data';
 
@@ -164,7 +165,22 @@ const TRANSLATIONS = {
     modal_ann_title: "Publicar Anuncio",
     lbl_ann_msg: "Mensaje para los invitados",
     ph_ann_msg: "Escribe aquí... (déjalo vacío para borrar)",
-    btn_post: "Publicar"
+        btn_post: "Publicar",
+
+    // Onboarding
+    ob_welcome: "¡Bienvenido! 👋",
+    ob_subtitle: "Sigue estos pasos para la mejor experiencia.",
+    ob_s1_title: "1. Instala la App",
+    ob_ios_a: "Pulsa",
+    ob_ios_b: "luego",
+    ob_ios_c: "Agregar a Inicio",
+    ob_android_a: "Pulsa los 3 puntos y selecciona",
+    ob_android_b: "Instalar aplicación / Agregar a pantalla de inicio",
+    ob_s2_title: "2. Tu Nombre",
+    ob_s2_desc: "Regístrate y usa el código del evento.",
+    ob_s3_title: "3. ¡Captura!",
+    ob_s3_desc: "Sube fotos y videos en tiempo real.",
+    ob_btn: "¡Entendido, vamos! 🚀"
   },
   en: {
     // Landing
@@ -280,7 +296,22 @@ const TRANSLATIONS = {
     modal_ann_title: "Post Announcement",
     lbl_ann_msg: "Message for guests",
     ph_ann_msg: "Write here... (leave empty to clear)",
-    btn_post: "Post"
+        btn_post: "Post",
+
+    // Onboarding
+    ob_welcome: "Welcome! 👋",
+    ob_subtitle: "Follow these steps for the best experience.",
+    ob_s1_title: "1. Install the App",
+    ob_ios_a: "Tap",
+    ob_ios_b: "then",
+    ob_ios_c: "Add to Home Screen",
+    ob_android_a: "Tap the 3 dots and select",
+    ob_android_b: "Install app / Add to Home screen",
+    ob_s2_title: "2. Your Name",
+    ob_s2_desc: "Sign up and use the event code.",
+    ob_s3_title: "3. Capture!",
+    ob_s3_desc: "Upload photos and videos in real time.",
+    ob_btn: "Got it, let's go! 🚀"
   }
 };
 
@@ -381,68 +412,84 @@ const LanguageToggle = ({ language, toggleLanguage, isDark }) => (
 );
 
 // --- PANTALLA DE INSTRUCCIONES (MEJORADA MÁS COMPACTA) ---
-const OnboardingScreen = ({ onFinish }) => {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const OnboardingScreen = ({ onFinish, language, toggleLanguage }) => {
+  const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const [platform, setPlatform] = useState(isIOSDevice ? 'ios' : 'android');
+  const text = TRANSLATIONS[language];
+
+  const tabClass = (active) =>
+    `px-4 py-1.5 rounded-full text-xs font-bold border transition ${
+      active
+        ? 'bg-yellow-500 text-black border-yellow-500'
+        : 'bg-white/5 text-gray-300 border-white/10'
+    }`;
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#0f172a] text-white flex flex-col animate-in fade-in duration-500">
-      
-      {/* Contenido con Scroll Independiente */}
+
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageToggle language={language} toggleLanguage={toggleLanguage} isDark={true} />
+      </div>
+
       <div className="flex-1 overflow-y-auto p-6 pb-32 custom-scrollbar">
         <div className="w-full max-w-md mx-auto space-y-6 text-center">
-          
+
           <div className="mb-4 mt-4">
               <img src="/logo.svg" alt="Logo" className="w-16 h-16 mx-auto mb-3 rounded-2xl shadow-xl shadow-yellow-500/10" />
-              <h1 className="text-2xl font-serif font-bold text-yellow-500">¡Bienvenido! 👋</h1>
-              <p className="text-gray-400 mt-1 text-xs">Sigue estos pasos para la mejor experiencia.</p>
+              <h1 className="text-2xl font-serif font-bold text-yellow-500">{text.ob_welcome}</h1>
+              <p className="text-gray-400 mt-1 text-xs">{text.ob_subtitle}</p>
           </div>
 
           <div className="space-y-4 text-left">
-              {/* PASO 1: INSTALAR */}
+
               <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex gap-4">
                 <div className="bg-yellow-500/20 p-2 rounded-xl h-fit text-yellow-500 shrink-0"><Smartphone size={20}/></div>
-                <div>
-                    <h3 className="font-bold text-md text-white">1. Instala la App</h3>
-                    {isIOS ? (
-                       <p className="text-xs text-gray-300 mt-1">
-                          Pulsa <Share size={14} className="inline text-blue-400"/> luego <PlusSquare size={14} className="inline text-white"/> <b>"Agregar a Inicio"</b>.
+                <div className="flex-1">
+                    <h3 className="font-bold text-md text-white">{text.ob_s1_title}</h3>
+
+                    <div className="flex gap-2 mt-2 mb-3">
+                      <button type="button" onClick={() => setPlatform('ios')} className={tabClass(platform === 'ios')}>iPhone</button>
+                      <button type="button" onClick={() => setPlatform('android')} className={tabClass(platform === 'android')}>Android</button>
+                    </div>
+
+                    {platform === 'ios' ? (
+                       <p className="text-xs text-gray-300">
+                          {text.ob_ios_a} <Share size={14} className="inline text-blue-400"/> {text.ob_ios_b} <PlusSquare size={14} className="inline text-white"/> <b>"{text.ob_ios_c}"</b>.
                        </p>
                     ) : (
-                       <p className="text-xs text-gray-300 mt-1">
-                          Pulsa los 3 puntos y selecciona <b>"Instalar aplicación"</b>.
+                       <p className="text-xs text-gray-300">
+                          {text.ob_android_a} <b>"{text.ob_android_b}"</b>.
                        </p>
                     )}
                 </div>
               </div>
 
-              {/* PASO 2: REGISTRO */}
               <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex gap-4">
                 <div className="bg-blue-500/20 p-2 rounded-xl h-fit text-blue-400 shrink-0"><User size={20}/></div>
                 <div>
-                    <h3 className="font-bold text-md text-white">2. Tu Nombre</h3>
-                    <p className="text-xs text-gray-400 mt-1">Regístrate y usa el código del evento.</p>
+                    <h3 className="font-bold text-md text-white">{text.ob_s2_title}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{text.ob_s2_desc}</p>
                 </div>
               </div>
 
-              {/* PASO 3: FOTOS */}
               <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex gap-4">
                 <div className="bg-purple-500/20 p-2 rounded-xl h-fit text-purple-400 shrink-0"><Camera size={20}/></div>
                 <div>
-                    <h3 className="font-bold text-md text-white">3. ¡Captura!</h3>
-                    <p className="text-xs text-gray-400 mt-1">Sube fotos y videos en tiempo real.</p>
+                    <h3 className="font-bold text-md text-white">{text.ob_s3_title}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{text.ob_s3_desc}</p>
                 </div>
               </div>
+
           </div>
         </div>
       </div>
 
-      {/* Botón FIJO al fondo con degradado para que no tape el texto bruscamente */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/90 to-transparent pt-10">
-        <button 
+        <button
           onClick={onFinish}
           className="w-full max-w-md mx-auto block btn-primary py-4 rounded-xl text-lg font-bold shadow-xl shadow-yellow-500/20 active:scale-95 transition"
         >
-          ¡Entendido, vamos! 🚀
+          {text.ob_btn}
         </button>
       </div>
 
@@ -719,7 +766,7 @@ const LandingPage = ({ onStart, theme, toggleTheme, language, toggleLanguage }) 
 };
 
 // --- PANTALLA DE LOGIN / REGISTRO ---
-const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
+const LoginScreen = ({ onJoin, userUid, theme, onBack, language, toggleLanguage }) => {
   const [mode, setMode] = useState('join'); // 'join', 'create', 'waiting_approval', 'success_create'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1058,7 +1105,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
     <div className="flex flex-col items-center justify-center h-[100dvh] p-6 relative animate-in fade-in">
       
       {/* HEADER */}
-      <nav className="absolute top-0 left-0 w-full px-6 py-6 flex items-center z-20">
+      <nav className="absolute top-0 left-0 w-full px-6 py-6 flex items-center justify-between z-20">
         <button onClick={onBack} className="flex items-center gap-3 hover:opacity-80 transition cursor-pointer text-left">
           <img src="/logo.svg" alt="Logo" className="w-9 h-9 rounded-lg shadow-sm" />
           <div className="flex flex-col justify-center items-start">
@@ -1068,6 +1115,7 @@ const LoginScreen = ({ onJoin, userUid, theme, onBack, language }) => {
             </span>
           </div>
         </button>
+        <LanguageToggle language={language} toggleLanguage={toggleLanguage} isDark={isDark} />
       </nav>
 
       {/* TITULO */}
@@ -1983,7 +2031,13 @@ export default function App() {
       return savedTheme ? savedTheme : 'dark';
   });
 
-  const [language, setLanguage] = useState('es'); 
+    const [language, setLanguage] = useState(() => {
+      const urlLang = new URLSearchParams(window.location.search).get('lang');
+      if (urlLang === 'en' || urlLang === 'es') return urlLang;
+      const saved = localStorage.getItem(LANG_KEY);
+      if (saved === 'en' || saved === 'es') return saved;
+      return (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
+  });
 
   const toggleTheme = () => {
       setTheme(prev => {
@@ -1994,7 +2048,11 @@ export default function App() {
   };
 
   const toggleLanguage = () => {
-      setLanguage(prev => prev === 'es' ? 'en' : 'es');
+      setLanguage(prev => {
+          const next = prev === 'es' ? 'en' : 'es';
+          localStorage.setItem(LANG_KEY, next);
+          return next;
+      });
   };
 
   const isDark = theme === 'dark';
@@ -2350,7 +2408,7 @@ export default function App() {
       return (
           <>
             <GlobalStyles theme="dark" />
-            <OnboardingScreen onFinish={handleFinishIntro} />
+            <OnboardingScreen onFinish={handleFinishIntro} language={language} toggleLanguage={toggleLanguage} />
           </>
       );
   }
@@ -2380,6 +2438,7 @@ export default function App() {
             theme={theme} 
             onBack={() => setShowLanding(true)}
             language={language}
+            toggleLanguage={toggleLanguage}
         />
       </>
     );
